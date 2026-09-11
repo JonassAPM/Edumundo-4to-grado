@@ -1,0 +1,20 @@
+# Dependencias de Node
+node_modules/
+
+# Carpeta dist antigua (ahora usamos /docs)
+dist/
+
+# docs/ NO se ignora → se sube al repo para que GitHub Pages lo sirva
+# (GitHub Settings → Pages → Deploy from branch → /docs)
+
+# Archivos de sistema
+.DS_Store
+Thumbs.db
+
+# Logs
+npm-debug.log*
+*.log
+
+# Variables de entorno locales
+.env
+.env.local

@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+
+    <!--
+      Parámetro 156: Bloqueo de pinch-to-zoom; viewport landscape forzado.
+      Parámetro 9 : Compatibilidad Android WebView 80+.
+    -->
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
+    />
+
+    <!-- SEO / PWA meta -->
+    <meta name="description" content="EduAventura: aplicación educativa offline de matemáticas para 4.° de Básica Primaria. I.E. Técnico Industrial Laureano Gómez Castro, Aguachica, Cesar." />
+    <meta name="theme-color" content="#00BCD4" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="EduAventura" />
+
+    <!-- Parámetro 8: Manifest PWA -->
+    <link rel="manifest" href="/manifest.json" />
+
+    <!-- Título SEO principal -->
+    <title>EduAventura – Matemáticas 4.° Grado Primaria</title>
+
+    <!-- Estilos globales (Zero-CDN: fuentes locales WOFF2 vía @font-face) -->
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+
+    <!--
+      Bloqueo de Orientación Vertical para Móviles con Animación de Giro Cartoon
+      Se muestra automáticamente en pantallas verticales/móviles.
+    -->
+    <div id="rotate-screen" aria-live="polite" role="alert">
+      <div class="rotate-screen__card">
+        <div class="rotate-ribbon">⭐ EDUAVENTURA 4.° ⭐</div>
+        
+        <div class="phone-rotate-stage">
+          <div class="cartoon-phone">
+            <div class="cartoon-phone-earpiece"></div>
+            <div class="cartoon-phone-screen">
+              <!-- Capa Portrait: cuando el teléfono está vertical -->
+              <div class="screen-portrait-layer">
+                <span class="sp-icon">🧒</span>
+                <span class="sp-hint">¡GÍRAME!</span>
+              </div>
+              <!-- Capa Landscape: rota -90° y se adapta horizontalmente cuando el teléfono gira 90° -->
+              <div class="screen-landscape-layer">
+                <span class="sl-item">🏝️</span>
+                <div class="sl-math">2 × 4 = 8</div>
+                <span class="sl-item">⭐</span>
+              </div>
+            </div>
+            <div class="cartoon-phone-button"></div>
+          </div>
+        </div>
+
+        <h2 class="rotate-screen__title">¡Gira tu teléfono!</h2>
+        <p class="rotate-screen__msg">
+          Coloca tu pantalla en <strong>posición horizontal</strong> para comenzar a jugar.
+        </p>
+        <div class="rotate-screen__badge">
+          <span class="rotate-badge-icon">🔄</span>
+          <span>Modo Horizontal Obligatorio</span>
+        </div>
+        <div class="rotate-mascot-speech">
+          <span class="rotate-mascot-avatar">🎒</span>
+          <span>¡Acomoda tu pantalla para disfrutar del tablero completo!</span>
+        </div>
+      </div>
+    </div>
+
+    <!--
+      Parámetro 102: Contenedor raíz centrado #app-container.
+      Parámetro 101: aspect-ratio 16/9 con letterboxing.
+      Parámetro 130: overflow hidden, cero scroll.
+    -->
+    <div id="app-container" role="main">
+      <!--
+        Pantalla 0 – Splash Screen (Parámetro 161)
+        Visible durante 1.5 s mientras el SW y localStorage se inicializan.
+      -->
+      <div id="screen-splash" class="screen screen--active" aria-label="Cargando EduAventura">
+        <div class="splash__logo" aria-hidden="true">
+          <span class="splash__title">EduAventura</span>
+          <span class="splash__subtitle">Matemáticas 4.° Grado</span>
+          <span class="splash__institution">I.E. Técnico Industrial Laureano Gómez Castro</span>
+        </div>
+        <div class="splash__spinner" aria-label="Cargando…"></div>
+      </div>
+
+      <!-- Las demás pantallas se montan dinámicamente por main.js -->
+    </div>
+
+    <!--
+      Parámetro 4: Registro del Service Worker desde el entry-point HTML.
+      La lógica real de registro vive en main.js para mantener la SPA limpia.
+    -->
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>

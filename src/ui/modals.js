@@ -1,0 +1,1156 @@
+/**
+ * @file modals.js — Sistema de Ventanas Emergentes Reales y Modales Gamificados v3.0
+ * EduAventura G4 · Estilo Duolingo × Brawl Stars · CERO alertas del navegador
+ * Cero recortes de cintas/ribbons superiores y scroll interno seguro
+ */
+
+'use strict';
+
+import { playPop, playClick, playWhoosh, playStar, playCoin, playVictory, playGuide, playUnlock } from '../core/audio.js';
+import { getAvatarRarity } from '../data/store_items.js';
+import { TROPHIES, TASKS, TASK_CLASSES, getOrganizedTasks, getClaimableTasksCount } from '../data/tasks_data.js';
+
+// ─── Utilidad Base para Modales ───────────────────────────────────────────────
+
+function _createOverlay(extraClass = '') {
+  playWhoosh();
+  const overlay = document.createElement('div');
+  overlay.className = `modal-backdrop ${extraClass}`.trim();
+  overlay.tabIndex = -1;
+
+  const onKey = (e) => {
+    if (e.key === 'Escape') {
+      overlay.querySelector('.btn-close-modal')?.click();
+    }
+  };
+  document.addEventListener('keydown', onKey);
+
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay) {
+      overlay.querySelector('.btn-close-modal')?.click();
+    }
+  });
+
+  overlay._cleanup = () => {
+    document.removeEventListener('keydown', onKey);
+    overlay.classList.add('modal-backdrop--out');
+    setTimeout(() => overlay.remove(), 200);
+  };
+
+  return overlay;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// 1. MODAL GUÍA DIDÁCTICA INTERACTIVA (Previa al Nivel)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+export function showDidacticGuideModal({ mk, lv, guide, onStart, showBack = false, onBack = null }) {
+  playGuide();
+  const overlay = _createOverlay('modal-backdrop--guide');
+
+  const stepsHtml = guide.steps.map((s) => `
+    <div class="dg-step-item">
+      <div class="dg-step-badge">${s.num}</div>
+      <div class="dg-step-content">${s.text}</div>
+    </div>
+  `).join('');
+
+  overlay.innerHTML = `
+    <div class="modal-box modal-box--guide" role="dialog" aria-modal="true" aria-labelledby="dg-title">
+      ${showBack ? `
+        <button class="modal-close-corner" id="dg-btn-close-corner" title="Volver al Tablero">✖</button>
+      ` : ''}
+
+      <div class="modal-ribbon modal-ribbon--guide">
+        <span>${guide.badge}</span>
+      </div>
+
+      <div class="modal-scroll-body">
+        <div class="dg-header">
+          <div class="dg-mascot-circle">${guide.mascot}</div>
+          <div class="dg-header-text">
+            <h2 id="dg-title" class="dg-title">${guide.title}</h2>
+            <div class="dg-speech-bubble">
+              ${guide.mascotMsg}
+            </div>
+          </div>
+        </div>
+
+        <div class="dg-steps-list">${stepsHtml}</div>
+        <div class="dg-visual-showcase">${guide.visualHtml}</div>
+
+        <div class="dg-trick-card">
+          <div class="dg-trick-icon">💡</div>
+          <div class="dg-trick-text">
+            <strong>¡Truco Ninja!</strong> ${guide.trick}
+          </div>
+        </div>
+
+        <div class="modal-actions ${showBack ? 'modal-actions--stacked' : ''}" style="width:100%">
+          <button class="btn btn-green btn-lg" id="dg-btn-start" style="width:100%">
+            🚀 ¡ENTENDIDO, A JUGAR!
+          </button>
+          ${showBack ? `
+            <button class="btn btn-blue btn-md" id="dg-btn-back" style="width:100%">
+              ◀ Volver al Tablero
+            </button>
+          ` : ''}
+        </div>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(overlay);
+
+  const startBtn = overlay.querySelector('#dg-btn-start');
+  startBtn?.focus();
+
+  startBtn?.addEventListener('click', () => {
+    playPop();
+    overlay._cleanup();
+    if (onStart) onStart();
+  });
+
+  if (showBack) {
+    const handleClose = () => {
+      playPop();
+      overlay._cleanup();
+      if (onBack) onBack();
+    };
+    overlay.querySelector('#dg-btn-back')?.addEventListener('click', handleClose);
+    overlay.querySelector('#dg-btn-close-corner')?.addEventListener('click', handleClose);
+  }
+
+  return { close: () => overlay._cleanup() };
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// 2. MODAL DE VICTORIA Y RECOMPENSAS (Estilo Brawl Stars / Duolingo)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+export function showVictoryModal({ stars = 3, coins = 15, combo = 1, isMaster = false, onNext, onRetry, onMenu }) {
+  playVictory();
+  const overlay = _createOverlay('modal-backdrop--victory');
+
+  const titles = ['¡BUEN INTENTO!', '¡MUY BIEN!', '¡VICTORIA ÉPICA!'];
+  const title = isMaster ? '👑 ¡DESAFÍO MAESTRO SUPERADO! 👑' : titles[stars - 1] || '¡NIVEL SUPERADO!';
+
+  overlay.innerHTML = `
+    <div class="modal-box modal-box--victory" role="dialog" aria-modal="true">
+      <div class="modal-ribbon ${isMaster ? 'modal-ribbon--master' : 'modal-ribbon--victory'}">
+        <span>${title}</span>
+      </div>
+
+      <div class="modal-scroll-body" style="align-items:center;text-align:center">
+        <div class="victory-stars-row">
+          <div class="v-star-slot ${stars >= 1 ? 'v-star--earned' : ''}" style="--star-delay:.15s">⭐</div>
+          <div class="v-star-slot ${stars >= 2 ? 'v-star--earned' : ''}" style="--star-delay:.35s">⭐</div>
+          <div class="v-star-slot ${stars >= 3 ? 'v-star--earned' : ''}" style="--star-delay:.55s">⭐</div>
+        </div>
+
+        <div class="victory-rewards-card">
+          <div class="reward-pill reward-pill--coins">
+            <span class="reward-icon">🪙</span>
+            <span class="reward-val">+${coins}</span>
+            <span class="reward-label">${coins === 0 ? 'Monedas (Ya ganado)' : 'Monedas'}</span>
+          </div>
+          ${combo > 1 ? `
+            <div class="reward-pill reward-pill--combo">
+              <span class="reward-icon">🔥</span>
+              <span class="reward-val">x${combo}</span>
+              <span class="reward-label">Combo Racha</span>
+            </div>
+          ` : ''}
+        </div>
+
+        ${coins === 0 ? `
+          <div style="font-size:11px;font-weight:700;color:#64748B;margin-bottom:.5rem">
+            ⚡ Consejo: ¡Gana monedas farmeando en el Modo Libre!
+          </div>
+        ` : ''}
+
+        <div class="modal-actions modal-actions--stacked" style="width:100%">
+          ${onNext ? `
+            <button class="btn btn-green btn-lg" id="v-btn-next">
+              ▶ SIGUIENTE NIVEL
+            </button>
+          ` : ''}
+          <div style="display:flex;gap:.4rem;width:100%">
+            <button class="btn btn-blue btn-md" style="flex:1" id="v-btn-retry">
+              🔄 Repetir
+            </button>
+            <button class="btn btn-orange btn-md" style="flex:1" id="v-btn-menu">
+              ${isMaster ? '🗺️ Módulos' : '🗺️ Niveles'}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(overlay);
+
+  for (let i = 1; i <= stars; i++) {
+    setTimeout(() => playStar(i), i * 200);
+  }
+  if (coins > 0) setTimeout(() => playCoin(), 650);
+
+  overlay.querySelector('#v-btn-next')?.addEventListener('click', () => {
+    playPop();
+    overlay._cleanup();
+    if (onNext) onNext();
+  });
+
+  overlay.querySelector('#v-btn-retry')?.addEventListener('click', () => {
+    playPop();
+    overlay._cleanup();
+    if (onRetry) onRetry();
+  });
+
+  overlay.querySelector('#v-btn-menu')?.addEventListener('click', () => {
+    playPop();
+    overlay._cleanup();
+    if (onMenu) onMenu();
+  });
+
+  return { close: () => overlay._cleanup() };
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// 3. MODAL DE DERROTA / SIN VIDAS
+// ═══════════════════════════════════════════════════════════════════════════════
+
+export function showGameOverModal({ onRetry, onGuide, onMenu }) {
+  playWhoosh();
+  const overlay = _createOverlay();
+
+  overlay.innerHTML = `
+    <div class="modal-box" style="max-width:420px;text-align:center" role="dialog" aria-modal="true">
+      <div class="modal-ribbon modal-ribbon--red">
+        <span>💔 ¡SIN VIDAS POR AHORA!</span>
+      </div>
+
+      <div class="modal-scroll-body" style="align-items:center;text-align:center">
+        <div style="font-size:clamp(36px,5.5vw,52px);margin:.8rem 0 .2rem">🤔💭</div>
+
+        <h3 style="font-size:clamp(14px,2vw,18px);font-weight:900;color:#0F172A">
+          ¡No te rindas, aventurero!
+        </h3>
+        <p style="font-size:clamp(10px,1.3vw,13px);color:#64748B;font-weight:600;margin:.3rem 0 .7rem;line-height:1.3">
+          Los errores son la forma en que el cerebro aprende nuevos superpoderes. Puedes revisar la guía o reintentar ahora mismo.
+        </p>
+
+        <div class="modal-actions modal-actions--stacked" style="width:100%">
+          <button class="btn btn-gold btn-md" id="go-btn-guide">
+            📖 REVISAR GUÍA Y PISTAS
+          </button>
+          <div style="display:flex;gap:.4rem;width:100%">
+            <button class="btn btn-green btn-md" style="flex:1" id="go-btn-retry">
+              🔄 Reintentar
+            </button>
+            <button class="btn btn-orange btn-md" style="flex:1" id="go-btn-menu">
+              🗺️ Módulos
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(overlay);
+
+  overlay.querySelector('#go-btn-guide')?.addEventListener('click', () => {
+    playPop();
+    overlay._cleanup();
+    if (onGuide) onGuide();
+  });
+
+  overlay.querySelector('#go-btn-retry')?.addEventListener('click', () => {
+    playPop();
+    overlay._cleanup();
+    if (onRetry) onRetry();
+  });
+
+  overlay.querySelector('#go-btn-menu')?.addEventListener('click', () => {
+    playPop();
+    overlay._cleanup();
+    if (onMenu) onMenu();
+  });
+
+  return { close: () => overlay._cleanup() };
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// 4. MODAL DE PAUSA / CONFIRMACIÓN DE SALIDA
+// ═══════════════════════════════════════════════════════════════════════════════
+
+export function showPauseModal({ onResume, onQuit }) {
+  playClick();
+  const overlay = _createOverlay();
+
+  overlay.innerHTML = `
+    <div class="modal-box" style="max-width:360px;text-align:center" role="dialog" aria-modal="true">
+      <div class="modal-ribbon modal-ribbon--blue">
+        <span>⏸️ JUEGO EN PAUSA</span>
+      </div>
+
+      <div class="modal-scroll-body" style="align-items:center;text-align:center">
+        <div style="padding:.6rem 0 .4rem">
+          <p style="font-size:clamp(12px,1.5vw,15px);font-weight:700;color:#37474F;line-height:1.35">
+            ¿Quieres tomarte un descanso?<br>
+            <span style="font-size:clamp(10px,1.2vw,12px);color:#78909C;font-weight:600">
+              Tu progreso en este nivel está a salvo.
+            </span>
+          </p>
+        </div>
+
+        <div class="modal-actions modal-actions--stacked" style="width:100%">
+          <button class="btn btn-green btn-md" id="pause-resume">
+            ▶ CONTINUAR JUGANDO
+          </button>
+          <button class="btn btn-orange btn-sm" id="pause-quit">
+            🗺️ Volver al Mapa de Módulos
+          </button>
+        </div>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(overlay);
+
+  overlay.querySelector('#pause-resume')?.addEventListener('click', () => {
+    playPop();
+    overlay._cleanup();
+    if (onResume) onResume();
+  });
+
+  overlay.querySelector('#pause-quit')?.addEventListener('click', () => {
+    playPop();
+    overlay._cleanup();
+    if (onQuit) onQuit();
+  });
+
+  return { close: () => overlay._cleanup() };
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// 5. MODAL DE PERFIL DE JUGADOR (Reemplaza alert)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+export function showProfileModal({ user, modules, save, onSaveAlias, onClose }) {
+  playPop();
+  const overlay = _createOverlay();
+  const actualSave = save || { user, modules };
+
+  const stars = user.stars_total || 0;
+  let rank = user.title || '🌟 Novato Matemático';
+
+  const unlockedAvatars = user.unlocked_avatars || ['🧒', '👧'];
+  let currentAvatar = user.avatar || '🧒';
+  const achievementsCount = (user.achievements || []).length;
+  const totalTrophies = TROPHIES.length;
+
+  const modBreakdown = Object.entries(modules).map(([k, m]) => {
+    const lvs = Object.values(m?.levels || {});
+    const cleared = lvs.filter((l) => l.cleared).length;
+    const name = k.includes('multi') ? 'Multiplicación' : k.includes('div') ? 'División' : k.includes('intro') ? 'Fracciones I' : 'Fracciones II';
+    const totalModLvs = 20;
+    const pct = Math.min(100, Math.round((cleared / totalModLvs) * 100));
+    return `
+      <div class="prof-mod-row">
+        <span class="prof-mod-name">${name}</span>
+        <div class="prof-mod-bar">
+          <div class="prof-mod-fill" style="width:${pct}%"></div>
+        </div>
+        <span class="prof-mod-count">${cleared}/${totalModLvs}</span>
+      </div>
+    `;
+  }).join('');
+
+  overlay.innerHTML = `
+    <div class="modal-box modal-box--profile" role="dialog" aria-modal="true">
+      <div class="modal-ribbon modal-ribbon--orange">
+        <span>👤 MI PERFIL DE AVENTURERO</span>
+      </div>
+
+      <div class="modal-scroll-body">
+        <div class="prof-content">
+          <div style="display:flex;flex-direction:column;align-items:center;width:100%">
+            <div class="prof-avatar-big avatar-emoji-bordered" id="prof-avatar-display" data-avatar="${currentAvatar}">${currentAvatar}</div>
+            <div style="font-size:10px;font-weight:800;color:#64748B;margin-bottom:.25rem">Tus Avatares (desliza para elegir):</div>
+            <div class="prof-avatar-picker-window">
+              <div class="prof-avatar-picker">
+                ${unlockedAvatars.map((av) => `
+                  <button class="prof-av-opt ${av === currentAvatar ? 'prof-av-opt--selected' : ''} avatar-emoji-bordered" data-av="${av}">${av}</button>
+                `).join('')}
+              </div>
+            </div>
+          </div>
+
+          <div class="prof-info-section">
+            <label class="prof-label" for="prof-inp-alias">Tu Nombre:</label>
+            <div style="display:flex;gap:.3rem;align-items:center">
+              <input id="prof-inp-alias" class="prof-alias-input" type="text" maxlength="20" value="${user.alias || 'Estudiante'}" />
+              <button class="btn btn-green btn-sm" id="prof-btn-save-alias">💾 Guardar</button>
+            </div>
+            <div class="prof-rank-badge">${rank}</div>
+
+            <div class="prof-stats-pills">
+              <div class="prof-stat-pill prof-stat--coins">
+                <span style="font-size:14px">🪙</span>
+                <strong>${user.coins || 0}</strong>
+                <small>Monedas</small>
+              </div>
+              <div class="prof-stat-pill prof-stat--stars">
+                <span style="font-size:14px">⭐</span>
+                <strong>${user.stars_total || 0}</strong>
+                <small>Estrellas</small>
+              </div>
+              <div class="prof-stat-pill prof-stat--achievements" id="prof-btn-achievements" title="Toca para ver todos tus trofeos y logros" style="cursor:pointer">
+                <span style="font-size:14px">🏆</span>
+                <strong>${achievementsCount} / ${totalTrophies}</strong>
+                <small>Logros</small>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="prof-mods-section">
+          <h4 style="font-size:clamp(10px,1.2vw,13px);font-weight:800;color:#37474F;margin-bottom:.2rem">
+            🗺️ Progreso de Campaña
+          </h4>
+          ${modBreakdown}
+        </div>
+
+        <div class="modal-actions" style="margin-top:.5rem">
+          <button class="btn btn-blue btn-md" id="prof-btn-close">
+            ✅ ¡LISTO!
+          </button>
+        </div>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(overlay);
+
+  overlay.querySelectorAll('.prof-av-opt').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      playClick();
+      currentAvatar = btn.dataset.av;
+      overlay.querySelectorAll('.prof-av-opt').forEach((b) => b.classList.remove('prof-av-opt--selected'));
+      btn.classList.add('prof-av-opt--selected');
+      const disp = overlay.querySelector('#prof-avatar-display');
+      if (disp) {
+        disp.textContent = currentAvatar;
+        disp.dataset.avatar = currentAvatar;
+        disp.classList.add('avatar-emoji-bordered');
+      }
+      user.avatar = currentAvatar;
+      if (onSaveAlias) onSaveAlias(user.alias, currentAvatar);
+    });
+  });
+
+  overlay.querySelector('#prof-btn-save-alias')?.addEventListener('click', () => {
+    playPop();
+    const val = overlay.querySelector('#prof-inp-alias')?.value.trim() || 'Estudiante';
+    user.alias = val;
+    if (onSaveAlias) onSaveAlias(val, currentAvatar);
+    showToast('¡Nombre guardado con éxito! 👤', 'ok', '💾');
+  });
+
+  overlay.querySelector('#prof-btn-achievements')?.addEventListener('click', () => {
+    playClick();
+    showAchievementsModal({
+      save: actualSave,
+      onClose: () => {}
+    });
+  });
+
+  overlay.querySelector('#prof-btn-close')?.addEventListener('click', () => {
+    playPop();
+    overlay._cleanup();
+    if (onClose) onClose();
+  });
+
+  return { close: () => overlay._cleanup() };
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// 5B. MODAL DE VITRINA DE LOGROS Y TROFEOS
+// ═══════════════════════════════════════════════════════════════════════════════
+
+export function showAchievementsModal({ save, onClose }) {
+  playPop();
+  const overlay = _createOverlay('modal-backdrop--achievements');
+  const user = save?.user || {};
+  const unlockedSet = new Set(user.achievements || []);
+  const total = TROPHIES.length;
+  const unlockedCount = TROPHIES.filter((t) => unlockedSet.has(t.id)).length;
+  const pct = Math.round((unlockedCount / total) * 100);
+
+  function renderCards(filter = 'all') {
+    const list = TROPHIES.filter((t) => {
+      const isUn = unlockedSet.has(t.id);
+      if (filter === 'unlocked') return isUn;
+      if (filter === 'locked') return !isUn;
+      return true;
+    });
+
+    if (list.length === 0) {
+      return `<div style="text-align:center;padding:1.5rem;color:#64748B;font-weight:800;font-size:12px;">No hay trofeos en esta categoría todavía.</div>`;
+    }
+
+    return list.map((t) => {
+      const isUn = unlockedSet.has(t.id);
+      return `
+        <div class="trophy-card ${isUn ? 'trophy-card--unlocked' : 'trophy-card--locked'}">
+          <div class="trophy-card-icon-box">
+            <span class="${isUn ? 'trophy-icon-glow' : 'trophy-icon-locked'}">${isUn ? t.icon : '🔒'}</span>
+          </div>
+          <div class="trophy-card-body">
+            <div class="trophy-card-header">
+              <span class="trophy-card-title">${t.title}</span>
+              <span class="trophy-card-badge ${isUn ? 'badge--unlocked' : 'badge--locked'}">
+                ${isUn ? '✅ Conseguido' : '🔒 Bloqueado'}
+              </span>
+            </div>
+            <div class="trophy-card-desc">${t.description}</div>
+            <div class="trophy-card-cat">Categoría: ${t.category}</div>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  overlay.innerHTML = `
+    <div class="modal-box modal-box--achievements" role="dialog" aria-modal="true">
+      <div class="modal-ribbon modal-ribbon--master">
+        <span>🏆 VITRINA DE TROFEOS & LOGROS</span>
+      </div>
+
+      <div class="modal-scroll-body">
+        <div class="ach-summary-banner">
+          <div style="font-size:clamp(22px,3.5vw,30px)">🏆</div>
+          <div style="flex:1">
+            <div style="font-size:12px;font-weight:900;color:#0F172A">
+              Trofeos Obtenidos: <span style="color:#D97706">${unlockedCount}</span> de ${total} (${pct}%)
+            </div>
+            <div class="ach-prog-bar">
+              <div class="ach-prog-fill" style="width:${pct}%"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="ach-filter-tabs">
+          <button class="ach-tab-btn ach-tab-btn--active" data-filter="all">Todos (${total})</button>
+          <button class="ach-tab-btn" data-filter="unlocked">🏆 Obtenidos (${unlockedCount})</button>
+          <button class="ach-tab-btn" data-filter="locked">🔒 Por Obtener (${total - unlockedCount})</button>
+        </div>
+
+        <div class="ach-grid" id="ach-cards-container">
+          ${renderCards('all')}
+        </div>
+
+        <div class="modal-actions" style="margin-top:.6rem">
+          <button class="btn btn-blue btn-md btn-close-modal" id="ach-btn-close">
+            ✅ ¡ENTENDIDO!
+          </button>
+        </div>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(overlay);
+
+  const container = overlay.querySelector('#ach-cards-container');
+  overlay.querySelectorAll('.ach-tab-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      playClick();
+      overlay.querySelectorAll('.ach-tab-btn').forEach((b) => b.classList.remove('ach-tab-btn--active'));
+      btn.classList.add('ach-tab-btn--active');
+      if (container) {
+        container.innerHTML = renderCards(btn.dataset.filter);
+      }
+    });
+  });
+
+  overlay.querySelector('#ach-btn-close')?.addEventListener('click', () => {
+    playPop();
+    overlay._cleanup();
+    if (onClose) onClose();
+  });
+
+  return { close: () => overlay._cleanup() };
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// 5C. MODAL DE TAREAS Y MISIONES HEROICAS
+// ═══════════════════════════════════════════════════════════════════════════════
+
+export function showTasksModal({ save, onClaimTask, onClose, getSave }) {
+  playPop();
+  const overlay = _createOverlay('modal-backdrop--tasks');
+
+  function getCurrentSave() {
+    return (getSave ? getSave() : null) || save;
+  }
+
+  function getClaimableTasks() {
+    const s = getCurrentSave();
+    const organized = getOrganizedTasks(s);
+    const list = [];
+    organized.forEach(({ activeTask }) => {
+      if (activeTask) {
+        const prog = activeTask.getProgress(s);
+        if (prog.completed) list.push(activeTask);
+      }
+    });
+    return list;
+  }
+
+  function updateModalHeader() {
+    const s = getCurrentSave();
+    const count = getClaimableTasksCount(s);
+    const ribbon = overlay.querySelector('.modal-ribbon--tasks span');
+    if (ribbon) {
+      ribbon.innerHTML = count > 0
+        ? `📋 MISIONES & TAREAS HEROICAS <span class="task-notif-badge badge-pop-update" style="vertical-align:middle;margin-left:6px">${count}</span>`
+        : `📋 MISIONES & TAREAS HEROICAS`;
+    }
+    const claimable = getClaimableTasks();
+    const claimAllBtn = overlay.querySelector('#tasks-btn-claim-all');
+    if (claimAllBtn) {
+      if (claimable.length > 0) {
+        const totalCoins = claimable.reduce((acc, t) => acc + (t.rewardCoins || 0), 0);
+        claimAllBtn.style.display = 'inline-flex';
+        claimAllBtn.innerHTML = `🎁 ¡RECLAMAR TODO! (${claimable.length}) · +${totalCoins} 🪙`;
+      } else {
+        claimAllBtn.style.display = 'none';
+      }
+    }
+    const closeBtn = overlay.querySelector('#tasks-btn-close');
+    if (closeBtn) {
+      closeBtn.textContent = count > 0 ? '✅ ¡LISTO!' : '🎉 ¡TODO AL DÍA!';
+    }
+  }
+
+  function renderTasksHtml() {
+    const s = getCurrentSave();
+    const organized = getOrganizedTasks(s);
+    return organized.map(({ classInfo, completedTasks, activeTask, isAllDone }) => {
+      const completedHtml = completedTasks.map((t) => {
+        const trophy = TROPHIES.find((tr) => tr.id === t.trophyId);
+        return `
+          <div class="task-row-tachada">
+            <span class="task-tachada-check">✅</span>
+            <span class="task-tachada-title">${t.title}</span>
+            <span class="task-tachada-badge">Completada · 🏆 ${trophy ? trophy.title : 'Logro'}</span>
+          </div>
+        `;
+      }).join('');
+
+      let activeHtml = '';
+      if (activeTask) {
+        const prog = activeTask.getProgress(s);
+        const canClaim = prog.completed;
+        const progressPct = Math.min(100, Math.round((prog.current / prog.target) * 100));
+        const trophy = TROPHIES.find((tr) => tr.id === activeTask.trophyId);
+
+        activeHtml = `
+          <div class="task-active-card ${canClaim ? 'task-active-card--claimable' : ''}">
+            <div class="task-active-main">
+              <div class="task-active-icon-badge">${activeTask.icon}</div>
+              <div class="task-active-text">
+                <div class="task-active-title">${activeTask.title}</div>
+                <div class="task-active-desc">${activeTask.description}</div>
+              </div>
+            </div>
+
+            <div class="task-active-progress-row">
+              <div class="task-active-bar-wrap">
+                <div class="task-active-bar-fill" style="width: ${progressPct}%"></div>
+              </div>
+              <span class="task-active-ratio">${Math.min(prog.current, prog.target)} / ${prog.target}</span>
+            </div>
+
+            <div class="task-active-actions">
+              <div class="task-reward-pills">
+                <span class="task-reward-pill">🪙 +${activeTask.rewardCoins}</span>
+                ${trophy ? `<span class="task-reward-pill">🏆 ${trophy.title}</span>` : ''}
+              </div>
+              ${canClaim ? `
+                <button class="btn btn-green btn-sm task-btn-claim pulse-claim" data-task-id="${activeTask.id}">
+                  ✨ ¡RECLAMAR!
+                </button>
+              ` : `
+                <span class="task-pending-label">⏳ En progreso (${progressPct}%)</span>
+              `}
+            </div>
+          </div>
+        `;
+      } else if (isAllDone) {
+        activeHtml = `
+          <div class="task-class-done-banner">
+            🌟 ¡Completaste todos los retos de esta clase!
+          </div>
+        `;
+      }
+
+      return `
+        <div class="task-class-block" style="border-left-color: ${classInfo.color}">
+          <div class="task-class-header">
+            <span class="task-class-icon">${classInfo.icon}</span>
+            <span class="task-class-name">${classInfo.name}</span>
+          </div>
+          ${completedHtml ? `<div class="task-tachada-list">${completedHtml}</div>` : ''}
+          ${activeHtml}
+        </div>
+      `;
+    }).join('');
+  }
+
+  function bindEvents() {
+    overlay.querySelectorAll('.task-btn-claim').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const taskId = btn.dataset.taskId;
+        const task = TASKS.find((t) => t.id === taskId);
+        if (!task) return;
+
+        playUnlock();
+        playCoin();
+        if (onClaimTask) {
+          const res = onClaimTask(task);
+          if (res) save = res;
+        }
+
+        const body = overlay.querySelector('#tasks-list-container');
+        if (body) {
+          body.innerHTML = renderTasksHtml();
+          bindEvents();
+          updateModalHeader();
+        }
+        showToast(`¡Reclamaste +${task.rewardCoins} 🪙 y el Trofeo! 🏆`, 'ok', '🎉');
+      });
+    });
+
+    overlay.querySelector('#tasks-btn-claim-all')?.addEventListener('click', () => {
+      const claimable = getClaimableTasks();
+      if (claimable.length === 0) return;
+
+      playUnlock();
+      playCoin();
+      playVictory();
+
+      let totalCoinsWon = 0;
+      claimable.forEach((task) => {
+        totalCoinsWon += (task.rewardCoins || 0);
+        if (onClaimTask) {
+          const res = onClaimTask(task);
+          if (res) save = res;
+        }
+      });
+
+      const body = overlay.querySelector('#tasks-list-container');
+      if (body) {
+        body.innerHTML = renderTasksHtml();
+        bindEvents();
+        updateModalHeader();
+      }
+      showToast(`¡Reclamaste ${claimable.length} misiones! +${totalCoinsWon} 🪙 y Trofeos 🏆`, 'ok', '🎉');
+    });
+  }
+
+  overlay.innerHTML = `
+    <div class="modal-box modal-box--tasks" role="dialog" aria-modal="true">
+      <div class="modal-ribbon modal-ribbon--tasks">
+        <span>📋 MISIONES & TAREAS HEROICAS</span>
+      </div>
+
+      <div class="modal-scroll-body">
+        <div class="tasks-banner-info">
+          <span>🎯 ¡Supera desafíos por clases! Al cumplir una tarea se tachará, reclamarás monedas y trofeos, y se revelará la siguiente meta.</span>
+        </div>
+
+        <div class="tasks-list" id="tasks-list-container">
+          ${renderTasksHtml()}
+        </div>
+
+        <div class="modal-actions" style="margin-top:.6rem;display:flex;gap:.6rem;justify-content:center;align-items:center;flex-wrap:wrap">
+          <button class="btn btn-green btn-md pulse-claim" id="tasks-btn-claim-all" style="display:none">
+            🎁 ¡RECLAMAR TODO!
+          </button>
+          <button class="btn btn-blue btn-md btn-close-modal" id="tasks-btn-close">
+            ✅ ¡LISTO!
+          </button>
+        </div>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(overlay);
+  updateModalHeader();
+  bindEvents();
+
+  overlay.querySelector('#tasks-btn-close')?.addEventListener('click', () => {
+    playPop();
+    overlay._cleanup();
+    if (onClose) onClose();
+  });
+
+  return { close: () => overlay._cleanup() };
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// 6. MODAL DE AJUSTES Y PANEL DOCENTE (Reemplaza alert sin corte de ribbon)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+export function showSettingsModal({ sfxOn, musicOn, onToggleSfx, onToggleMusic, onReset, onClose }) {
+  playPop();
+  const overlay = _createOverlay();
+
+  overlay.innerHTML = `
+    <div class="modal-box modal-box--settings" role="dialog" aria-modal="true">
+      <div class="modal-ribbon modal-ribbon--settings">
+        <span>⚙️ AJUSTES & DOCENTE</span>
+      </div>
+
+      <div class="modal-scroll-body">
+        <div class="settings-content">
+          <div class="settings-section">
+            <h4 class="settings-section-title">🔊 Sonido y Música</h4>
+            <div class="settings-row">
+              <span>Efectos de Sonido (SFX)</span>
+              <button class="btn btn-sm ${sfxOn ? 'btn-green' : 'btn-gray'}" id="set-toggle-sfx">
+                ${sfxOn ? '🔊 Activado' : '<span class="icon-music-slash">🔊</span> Silenciado'}
+              </button>
+            </div>
+            <div class="settings-row">
+              <span>Música Ambiental</span>
+              <button class="btn btn-sm ${musicOn ? 'btn-green' : 'btn-gray'}" id="set-toggle-music">
+                ${musicOn ? '🎵 Activada' : '<span class="icon-music-slash">🎵</span> Silenciada'}
+              </button>
+            </div>
+          </div>
+
+          <div class="settings-section">
+            <h4 class="settings-section-title">👨‍🏫 Información Institucional</h4>
+            <div class="settings-docente-box">
+              <p><strong>I.E. Técnico Industrial Laureano Gómez Castro</strong></p>
+              <p>Sede Primaria · Aguachica, Cesar · Grado 4.°</p>
+              <p style="margin-top:.2rem;color:#78909C;font-size:clamp(9px,1.1vw,11px)">
+                100% Offline · Desarrollado para fortalecer el cálculo mental y el razonamiento fraccionario.
+              </p>
+            </div>
+          </div>
+
+          <div class="settings-section">
+            <h4 class="settings-section-title" style="color:#C62828">⚠️ Zona de Peligro</h4>
+            <div class="settings-row">
+              <span style="font-size:11px;color:#546E7A">Borrar todo el progreso</span>
+              <button class="btn btn-red btn-sm" id="set-btn-reset">
+                🗑 Borrar Todo
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-actions" style="margin-top:.5rem">
+          <button class="btn btn-blue btn-md" id="set-btn-close">
+            ✅ CERRAR AJUSTES
+          </button>
+        </div>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(overlay);
+
+  const btnSfx = overlay.querySelector('#set-toggle-sfx');
+  btnSfx?.addEventListener('click', () => {
+    playPop();
+    const newState = onToggleSfx ? onToggleSfx() : false;
+    btnSfx.className = `btn btn-sm ${newState ? 'btn-green' : 'btn-gray'}`;
+    btnSfx.innerHTML = newState ? '🔊 Activado' : '<span class="icon-music-slash">🔊</span> Silenciado';
+  });
+
+  const btnMusic = overlay.querySelector('#set-toggle-music');
+  btnMusic?.addEventListener('click', () => {
+    playPop();
+    const newState = onToggleMusic ? onToggleMusic() : false;
+    btnMusic.className = `btn btn-sm ${newState ? 'btn-green' : 'btn-gray'}`;
+    btnMusic.innerHTML = newState ? '🎵 Activada' : '<span class="icon-music-slash">🎵</span> Silenciada';
+  });
+
+  overlay.querySelector('#set-btn-reset')?.addEventListener('click', () => {
+    playClick();
+    showConfirmModal({
+      title: '⚠️ ¿BORRAR TODO EL PROGRESO?',
+      message: 'Perderás todas tus monedas ganadas, estrellas, avatares y niveles. ¿Deseas continuar?',
+      confirmText: 'Sí, Borrar Todo',
+      cancelText: 'Cancelar',
+      onConfirm: () => {
+        if (onReset) onReset();
+      },
+    });
+  });
+
+  overlay.querySelector('#set-btn-close')?.addEventListener('click', () => {
+    playPop();
+    overlay._cleanup();
+    if (onClose) onClose();
+  });
+
+  return { close: () => overlay._cleanup() };
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// 7. DIÁLOGO DE CONFIRMACIÓN PROGRAMADO
+// ═══════════════════════════════════════════════════════════════════════════════
+
+export function showConfirmModal({ title = '¿Estás seguro?', message = '', confirmText = 'Aceptar', cancelText = 'Cancelar', onConfirm, onCancel }) {
+  playClick();
+  const overlay = _createOverlay();
+
+  overlay.innerHTML = `
+    <div class="modal-box" style="max-width:380px;text-align:center" role="dialog" aria-modal="true">
+      <div class="modal-ribbon modal-ribbon--red">
+        <span>${title}</span>
+      </div>
+
+      <div class="modal-scroll-body">
+        <div style="padding:.6rem 0 .3rem">
+          <p style="font-size:clamp(11px,1.4vw,14px);font-weight:700;color:#37474F;line-height:1.35">
+            ${message}
+          </p>
+        </div>
+
+        <div class="modal-actions">
+          <button class="btn btn-gray btn-md" id="cfm-btn-cancel">
+            ${cancelText}
+          </button>
+          <button class="btn btn-red btn-md" id="cfm-btn-confirm">
+            ${confirmText}
+          </button>
+        </div>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(overlay);
+
+  overlay.querySelector('#cfm-btn-cancel')?.addEventListener('click', () => {
+    playPop();
+    overlay._cleanup();
+    if (onCancel) onCancel();
+  });
+
+  overlay.querySelector('#cfm-btn-confirm')?.addEventListener('click', () => {
+    playPop();
+    overlay._cleanup();
+    if (onConfirm) onConfirm();
+  });
+
+  return { close: () => overlay._cleanup() };
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// 8. TOAST DE NOTIFICACIONES FLOTANTES
+// ═══════════════════════════════════════════════════════════════════════════════
+
+export function showToast(msg, type = 'ok', icon = '✨') {
+  let container = document.getElementById('toast-container');
+  if (!container) {
+    container = document.createElement('div');
+    container.id = 'toast-container';
+    container.className = 'toast-container';
+    document.body.appendChild(container);
+  }
+
+  const toast = document.createElement('div');
+  toast.className = `toast-pill toast-pill--${type}`;
+  toast.innerHTML = `
+    <span class="toast-icon">${icon}</span>
+    <span class="toast-text">${msg}</span>
+  `;
+
+  container.appendChild(toast);
+
+  setTimeout(() => {
+    toast.classList.add('toast-pill--out');
+    setTimeout(() => toast.remove(), 200);
+  }, 2400);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 9. MODAL INFORMATIVO DE PODERES DE AVATAR (Previa a Modo Libre)
+// ═══════════════════════════════════════════════════════════════════════════
+
+export function showFreeModeBriefingModal({ avatar, onStart, onCancel }) {
+  playPop();
+  const overlay = _createOverlay('modal-backdrop--briefing');
+  const rarity = getAvatarRarity(avatar); // 'basic', 'common', 'advanced', 'epic', 'mythic'
+
+  let ribbonText = 'PODERES DE MODO LIBRE';
+  let ribbonClass = 'modal-ribbon modal-ribbon--victory';
+  let title = '';
+  let subtitle = '';
+  let powersHtml = '';
+
+  const hasAura = rarity !== 'basic';
+
+  const avatarDisplayHtml = hasAura
+    ? `
+      <div class="avatar-aura-wrap avatar-aura--${rarity}" style="transform:scale(0.82);margin:0.25rem 0 0.25rem;">
+        <span class="aura-spark"></span>
+        <span class="aura-spark"></span>
+        <span class="aura-spark"></span>
+        <span class="aura-spark"></span>
+        <span class="aura-spark"></span>
+        <span class="aura-front-sheen"></span>
+        <div class="avatar-emoji-bordered" data-avatar="${avatar}" style="font-size:clamp(28px, 3.8vw, 36px);line-height:1">${avatar}</div>
+      </div>
+    `
+    : `
+      <div class="avatar-emoji-bordered" data-avatar="${avatar}" style="font-size:clamp(28px, 3.8vw, 36px);line-height:1;margin:0.25rem 0 0.25rem;">${avatar}</div>
+    `;
+
+  if (rarity === 'mythic') {
+    ribbonText = '👑 AVATAR MÍTICO DETECTADO';
+    ribbonClass = 'modal-ribbon modal-ribbon--master';
+    title = '¡Habilidades Míticas en Juego!';
+    subtitle = 'Tu avatar cuenta con 2 poderes extraordinarios para este contrarreloj:';
+    powersHtml = `
+      <div class="briefing-power-card" style="border-color:#F59E0B;background:#FFFBEB">
+        <div class="briefing-power-icon">⚡</div>
+        <div class="briefing-power-info">
+          <div class="briefing-power-name" style="color:#B45309">Auto-Acierto (5 veces por partida)</div>
+          <div class="briefing-power-desc">
+            Presionando el botón <strong>⚡ Auto-Acierto</strong> (o la tecla <span class="briefing-power-key-tag">Espacio</span> / <span class="briefing-power-key-tag">P</span> en PC), se resuelve automáticamente la pregunta actual, sumando puntos y reiniciando el reloj.
+          </div>
+        </div>
+      </div>
+      <div class="briefing-power-card" style="border-color:#C084FC;background:#FAF5FF">
+        <div class="briefing-power-icon">🔮</div>
+        <div class="briefing-power-info">
+          <div class="briefing-power-name" style="color:#7E22CE">Descarte Mítico (1 vez por partida)</div>
+          <div class="briefing-power-desc">
+            Se activará en cuanto haya <strong>4 o más opciones</strong> en pantalla (racha 4+). Presionando el botón <strong>🔮 Descarte Mítico</strong> (o tecla <span class="briefing-power-key-tag">D</span> en PC), <strong>elimina 2 opciones incorrectas</strong> (la mitad) para que sigas respondiendo velozmente.
+          </div>
+        </div>
+      </div>
+    `;
+  } else if (rarity === 'epic') {
+    ribbonText = '🟣 AVATAR ÉPICO DETECTADO';
+    ribbonClass = 'modal-ribbon modal-ribbon--victory';
+    title = '¡Habilidad Épica en Juego!';
+    subtitle = 'Tu avatar cuenta con asistencia especial durante este contrarreloj:';
+    powersHtml = `
+      <div class="briefing-power-card" style="border-color:#C084FC;background:#FAF5FF">
+        <div class="briefing-power-icon">⚡</div>
+        <div class="briefing-power-info">
+          <div class="briefing-power-name" style="color:#7E22CE">Auto-Acierto (5 veces por partida)</div>
+          <div class="briefing-power-desc">
+            Presionando el botón <strong>⚡ Auto-Acierto</strong> (o la tecla <span class="briefing-power-key-tag">Espacio</span> / <span class="briefing-power-key-tag">P</span> en PC), se resolverá de forma automática la pregunta actual si necesitas salvar tu racha. ¡Puedes usarlo hasta <strong>5 veces por partida</strong>!
+          </div>
+        </div>
+      </div>
+    `;
+  } else if (rarity === 'advanced') {
+    ribbonText = '🔵 AVATAR AVANZADO DETECTADO';
+    ribbonClass = 'modal-ribbon modal-ribbon--victory';
+    title = '¡Habilidad Avanzada en Juego!';
+    subtitle = 'Tu avatar cuenta con asistencia táctica durante este contrarreloj:';
+    powersHtml = `
+      <div class="briefing-power-card" style="border-color:#38BDF8;background:#F0F9FF">
+        <div class="briefing-power-icon">⚡</div>
+        <div class="briefing-power-info">
+          <div class="briefing-power-name" style="color:#0369A1">Auto-Acierto (1 vez por partida)</div>
+          <div class="briefing-power-desc">
+            Presionando el botón <strong>⚡ Auto-Acierto</strong> (o la tecla <span class="briefing-power-key-tag">Espacio</span> / <span class="briefing-power-key-tag">P</span> en PC), se colocará la respuesta correcta automáticamente. Puedes usarlo <strong>1 vez por partida</strong>.
+          </div>
+        </div>
+      </div>
+    `;
+  } else if (rarity === 'common') {
+    ribbonText = '🟢 AVATAR COMÚN';
+    ribbonClass = 'modal-ribbon';
+    title = 'Desafío a Puro Talento';
+    subtitle = 'Los avatares comunes no tienen habilidades especiales en el Modo Libre.';
+    powersHtml = `
+      <div class="briefing-power-card">
+        <div class="briefing-power-icon">💡</div>
+        <div class="briefing-power-info">
+          <div class="briefing-power-name">Entrenamiento Clásico</div>
+          <div class="briefing-power-desc">
+            ¡Demuestra tu rapidez mental resolviendo cada reto sin ayudas! O visita la <strong>Tienda</strong> para equipar avatares <strong>Avanzados (1 acierto)</strong>, <strong>Épicos (5 aciertos)</strong> o <strong>Míticos (5 aciertos + descarte)</strong>.
+          </div>
+        </div>
+      </div>
+    `;
+  } else {
+    // basic
+    ribbonText = '⚪ AVATAR BÁSICO';
+    ribbonClass = 'modal-ribbon';
+    title = 'Desafío a Puro Talento';
+    subtitle = 'Los avatares iniciales no tienen habilidades especiales ni auras.';
+    powersHtml = `
+      <div class="briefing-power-card">
+        <div class="briefing-power-icon">💡</div>
+        <div class="briefing-power-info">
+          <div class="briefing-power-name">Sin Poderes Especiales</div>
+          <div class="briefing-power-desc">
+            ¡Pon a prueba tu agilidad al natural! O visita la <strong>Tienda</strong> para desbloquear avatares con auras resplandecientes y poderes de ayuda contrarreloj.
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  overlay.innerHTML = `
+    <div class="modal-box modal-box--briefing" role="dialog" aria-modal="true">
+      <div class="${ribbonClass}">
+        <span>${ribbonText}</span>
+      </div>
+
+      <div class="briefing-avatar-preview">
+        ${avatarDisplayHtml}
+      </div>
+
+      <h3 style="font-size:clamp(15px, 2vw, 19px);font-weight:900;color:#0F172A;margin:.2rem 0">
+        ${title}
+      </h3>
+      <p style="font-size:clamp(10.5px, 1.3vw, 12.5px);font-weight:700;color:#64748B;margin:0 0 .5rem;line-height:1.35">
+        ${subtitle}
+      </p>
+
+      <div class="briefing-powers-list">
+        ${powersHtml}
+      </div>
+
+      <div style="display:flex;gap:.6rem;width:100%;margin-top:.7rem">
+        <button class="btn btn-gray btn-md" id="fm-briefing-cancel-btn" style="flex:0.35">
+          ◀ Volver
+        </button>
+        <button class="btn btn-green btn-md" id="fm-briefing-start-btn" style="flex:1">
+          ¡COMENZAR DESAFÍO! ⚡
+        </button>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(overlay);
+
+  overlay.querySelector('#fm-briefing-start-btn')?.addEventListener('click', () => {
+    playPop();
+    overlay._cleanup();
+    if (onStart) onStart();
+  });
+
+  overlay.querySelector('#fm-briefing-cancel-btn')?.addEventListener('click', () => {
+    playPop();
+    overlay._cleanup();
+    if (onCancel) onCancel();
+  });
+
+  return { close: () => overlay._cleanup() };
+}

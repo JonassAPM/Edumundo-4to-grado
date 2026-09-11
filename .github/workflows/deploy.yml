@@ -1,0 +1,62 @@
+name: Deploy EduAventura a GitHub Pages
+
+on:
+  # Se dispara en cada push a la rama principal
+  push:
+    branches: [main, master]
+  # Permite disparar manualmente desde la pestaña Actions de GitHub
+  workflow_dispatch:
+
+# Permisos necesarios para publicar en GitHub Pages
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Solo un deploy a la vez; cancela el anterior si hay uno en curso
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      # 1. Checkout del código fuente
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # 2. Configurar Node.js (misma versión LTS)
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      # 3. Instalar dependencias (solo Vite)
+      - name: Instalar dependencias
+        run: npm install
+
+      # 4. Compilar el proyecto con Vite → genera /dist
+      # El script postbuild copia automáticamente sw.js, manifest.json y .nojekyll
+      - name: Build (vite build)
+        run: npm run build
+
+      # 7. Configurar GitHub Pages
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      # 8. Subir el /dist como artefacto de Pages
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: './dist'
+
+      # 9. Desplegar en GitHub Pages
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
