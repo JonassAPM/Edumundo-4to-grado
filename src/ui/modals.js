@@ -376,12 +376,16 @@ export function showProfileModal({ user, modules, save, onSaveAlias, onClose }) 
       <div class="modal-scroll-body">
         <div class="prof-content">
           <div style="display:flex;flex-direction:column;align-items:center;width:100%">
-            <div class="prof-avatar-big avatar-emoji-bordered" id="prof-avatar-display" data-avatar="${currentAvatar}">${currentAvatar}</div>
+            <div class="prof-avatar-big" id="prof-avatar-display" data-avatar="${currentAvatar}">
+              <span class="prof-avatar-emoji avatar-emoji-bordered">${currentAvatar}</span>
+            </div>
             <div style="font-size:10px;font-weight:800;color:#64748B;margin-bottom:.25rem">Tus Avatares (desliza para elegir):</div>
             <div class="prof-avatar-picker-window">
               <div class="prof-avatar-picker">
                 ${unlockedAvatars.map((av) => `
-                  <button class="prof-av-opt ${av === currentAvatar ? 'prof-av-opt--selected' : ''} avatar-emoji-bordered" data-av="${av}">${av}</button>
+                  <button class="prof-av-opt ${av === currentAvatar ? 'prof-av-opt--selected' : ''}" data-av="${av}">
+                    <span class="prof-av-opt-emoji avatar-emoji-bordered">${av}</span>
+                  </button>
                 `).join('')}
               </div>
             </div>
@@ -441,9 +445,8 @@ export function showProfileModal({ user, modules, save, onSaveAlias, onClose }) 
       btn.classList.add('prof-av-opt--selected');
       const disp = overlay.querySelector('#prof-avatar-display');
       if (disp) {
-        disp.textContent = currentAvatar;
         disp.dataset.avatar = currentAvatar;
-        disp.classList.add('avatar-emoji-bordered');
+        disp.innerHTML = `<span class="prof-avatar-emoji avatar-emoji-bordered">${currentAvatar}</span>`;
       }
       user.avatar = currentAvatar;
       if (onSaveAlias) onSaveAlias(user.alias, currentAvatar);

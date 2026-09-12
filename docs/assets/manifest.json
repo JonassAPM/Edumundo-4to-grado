@@ -2,22 +2,28 @@
   "name": "EduAventura 4° Primaria",
   "short_name": "EduAventura",
   "description": "Aplicación educativa de matemáticas para 4.° de Básica Primaria — I.E. Técnico Industrial Laureano Gómez Castro, Aguachica, Cesar.",
-  "start_url": "/",
-  "scope": "/",
+  "start_url": "./",
+  "scope": "./",
   "display": "standalone",
   "orientation": "landscape-primary",
   "background_color": "#E0F7FA",
-  "theme_color": "#00BCD4",
+  "theme_color": "#0284C7",
   "lang": "es",
   "icons": [
     {
-      "src": "/assets/images/icon-192.png",
+      "src": "./favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "./assets/images/icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any maskable"
     },
     {
-      "src": "/assets/images/icon-512.png",
+      "src": "./assets/images/icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"

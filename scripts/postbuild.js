@@ -22,8 +22,11 @@ if (!fs.existsSync(distDir)) fs.mkdirSync(distDir, { recursive: true });
 
 // ─── 1. Copiar archivos de raíz al /docs y /dist ───────────────────────────────
 const filesToCopy = [
-  ['sw.js',        'sw.js'],
-  ['manifest.json','manifest.json'],
+  ['sw.js',          'sw.js'],
+  ['manifest.json',  'manifest.json'],
+  ['favicon.svg',    'favicon.svg'],
+  ['favicon.png',    'favicon.png'],
+  ['favicon-32.png', 'favicon-32.png'],
 ];
 
 for (const [src, dest] of filesToCopy) {
@@ -44,10 +47,10 @@ function patchHtml(targetDir) {
   if (!fs.existsSync(htmlPath)) return;
   let html = fs.readFileSync(htmlPath, 'utf8');
 
-  // Quitar type="module" y crossorigin del tag <script> del bundle
+  // Quitar type="module" y crossorigin del tag <script> del bundle y agregar defer
   html = html.replace(
-    /<script\s+type="module"\s+crossorigin\s+src="([^"]+)"><\/script>/g,
-    '<script src="$1"></script>'
+    /<script(?:\s+type="module")?(?:\s+crossorigin)?\s+src="([^"]+)"><\/script>/g,
+    '<script defer src="$1"></script>'
   );
 
   // Quitar crossorigin del tag <link rel="stylesheet"> si existe

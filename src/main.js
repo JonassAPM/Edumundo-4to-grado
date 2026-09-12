@@ -171,23 +171,49 @@ function _getFullscreenSvg(isFull) {
 }
 
 function _updateFullscreenButtons() {
-  const isFull = !!document.fullscreenElement;
+  const isFull = !!(document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement);
   document.querySelectorAll('.btn-fullscreen-toggle').forEach((btn) => {
     btn.innerHTML = _getFullscreenSvg(isFull);
     btn.title = isFull ? 'Salir de pantalla completa' : 'Pantalla completa';
   });
+  if (document.body) {
+    if (isFull) {
+      document.body.classList.add('is-fullscreen');
+    } else {
+      document.body.classList.remove('is-fullscreen');
+    }
+  }
+  if (document.documentElement) {
+    if (isFull) {
+      document.documentElement.classList.add('is-fullscreen');
+    } else {
+      document.documentElement.classList.remove('is-fullscreen');
+    }
+  }
 }
 
 function _toggleFullscreen() {
   playPop();
-  if (!document.fullscreenElement) {
-    document.documentElement.requestFullscreen().catch(() => {});
+  const isFull = !!(document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement);
+  if (!isFull) {
+    const docEl = document.documentElement;
+    const req = docEl.requestFullscreen || docEl.webkitRequestFullscreen || docEl.mozRequestFullScreen || docEl.msRequestFullscreen;
+    if (req) {
+      req.call(docEl).catch(() => {});
+    }
   } else {
-    document.exitFullscreen().catch(() => {});
+    const exit = document.exitFullscreen || document.webkitExitFullscreen || document.mozCancelFullScreen || document.msExitFullscreen;
+    if (exit) {
+      exit.call(document).catch(() => {});
+    }
   }
 }
 
 document.addEventListener('fullscreenchange', _updateFullscreenButtons);
+document.addEventListener('webkitfullscreenchange', _updateFullscreenButtons);
+document.addEventListener('mozfullscreenchange', _updateFullscreenButtons);
+document.addEventListener('MSFullscreenChange', _updateFullscreenButtons);
+window.addEventListener('resize', _updateFullscreenButtons);
 
 // ─── Service Worker ───────────────────────────────────────────────────────────
 if ('serviceWorker' in navigator) {
@@ -200,27 +226,36 @@ if ('serviceWorker' in navigator) {
 }
 
 // ─── Orientación de Pantalla (Bloqueo en Vertical y Adaptación Responsiva) ────
-const $rotateEl = document.getElementById('rotate-screen');
 const checkOrient = () => {
-  if (!$rotateEl) return;
+  const rotateEl = document.getElementById('rotate-screen');
   const isPortrait = (
     window.innerHeight > window.innerWidth ||
     (window.screen?.orientation?.type ? window.screen.orientation.type.startsWith('portrait') : false) ||
     (window.matchMedia ? window.matchMedia('(orientation: portrait)').matches : false)
   );
 
-  $rotateEl.style.display = isPortrait ? 'flex' : 'none';
+  if (rotateEl) {
+    rotateEl.style.display = isPortrait ? 'flex' : 'none';
+  }
 
-  if (isPortrait) {
-    document.documentElement.classList.add('is-portrait');
-    document.documentElement.classList.remove('is-landscape');
-    document.body.classList.add('is-portrait');
-    document.body.classList.remove('is-landscape');
-  } else {
-    document.documentElement.classList.remove('is-portrait');
-    document.documentElement.classList.add('is-landscape');
-    document.body.classList.remove('is-portrait');
-    document.body.classList.add('is-landscape');
+  if (document.documentElement) {
+    if (isPortrait) {
+      document.documentElement.classList.add('is-portrait');
+      document.documentElement.classList.remove('is-landscape');
+    } else {
+      document.documentElement.classList.remove('is-portrait');
+      document.documentElement.classList.add('is-landscape');
+    }
+  }
+
+  if (document.body) {
+    if (isPortrait) {
+      document.body.classList.add('is-portrait');
+      document.body.classList.remove('is-landscape');
+    } else {
+      document.body.classList.remove('is-portrait');
+      document.body.classList.add('is-landscape');
+    }
   }
 };
 window.addEventListener('resize', checkOrient, { passive: true });
@@ -233,8 +268,6 @@ window.addEventListener('orientationchange', () => {
 if (window.screen && window.screen.orientation) {
   window.screen.orientation.addEventListener('change', checkOrient);
 }
-checkOrient();
-requestAnimationFrame(checkOrient);
 
 // ─── FSM Render Dispatcher ───────────────────────────────────────────────────
 window.addEventListener('eduaventura:statechange', (e) => {
@@ -4014,16 +4047,28 @@ function initOrientationWatcher() {
 
 // ─── Bootstrap ───────────────────────────────────────────────────────────────
 async function bootstrap() {
-  initOrientationWatcher();
-  const save = loadSave();
+  checkOrient();
+  _updateFullscreenButtons();
+
+  let save;
+  try {
+    save = loadSave();
+  } catch (err) {
+    console.warn('[Bootstrap] Error al cargar guardado, usando fallback.', err);
+    save = {};
+  }
 
   // Auto-recuperación y sincronización de estrellas totales acumuladas
-  save.user.stars_total = _calcCanonicalTotalStars(save);
-  _persist(save);
+  try {
+    if (save?.user) {
+      save.user.stars_total = _calcCanonicalTotalStars(save);
+      _persist(save);
+    }
+  } catch (_) {}
 
   // Restaurar preferencias guardadas de SFX y Música
-  const sfxSaved = save.user.sfx_enabled !== false;
-  const musicSaved = save.user.music_enabled !== false;
+  const sfxSaved = save?.user?.sfx_enabled !== false;
+  const musicSaved = save?.user?.music_enabled !== false;
   setSfxEnabled(sfxSaved);
   setMusicEnabled(musicSaved);
 
@@ -4047,22 +4092,49 @@ async function bootstrap() {
     window.addEventListener(evt, onFirstInteraction, { once: true, passive: true });
   });
 
-  await new Promise((r) => setTimeout(r, 1100));
+  // Temporizador de carga visual suave
+  await new Promise((r) => setTimeout(r, 950));
 
   const splash = document.getElementById('screen-splash');
   if (splash) {
-    splash.style.transition = 'opacity .22s ease';
+    splash.style.transition = 'opacity .24s ease';
     splash.style.opacity = '0';
     splash.style.pointerEvents = 'none';
     setTimeout(() => {
       if (splash.parentNode) splash.style.display = 'none';
-    }, 240);
+    }, 250);
   }
 
-  initState(save);
+  try {
+    initState(save);
+  } catch (err) {
+    console.error('[Bootstrap InitState Error]', err);
+    try {
+      initState(loadSave());
+    } catch (_) {}
+  }
 }
 
-bootstrap().catch((err) => {
-  console.error('[Bootstrap Error]', err);
-});
+// Fallback universal a prueba de fallos: retirar pantalla de carga en máximo 2.2s
+setTimeout(() => {
+  const splash = document.getElementById('screen-splash');
+  if (splash && splash.style.display !== 'none') {
+    splash.style.transition = 'opacity .24s ease';
+    splash.style.opacity = '0';
+    splash.style.pointerEvents = 'none';
+    setTimeout(() => {
+      if (splash.parentNode) splash.style.display = 'none';
+    }, 250);
+  }
+}, 2200);
+
+// Arranque seguro cuando el DOM esté completamente listo
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', () => {
+    bootstrap().catch((err) => console.error('[Bootstrap Error]', err));
+  }, { once: true });
+} else {
+  bootstrap().catch((err) => console.error('[Bootstrap Error]', err));
+}
+
 

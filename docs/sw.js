@@ -37,6 +37,8 @@ const PRE_CACHE_ASSETS = IS_DEV
       './',
       './index.html',
       './manifest.json',
+      './favicon.svg',
+      './favicon.png',
       './sw.js',
       // Bundle principal (nombre fijo gracias al vite.config.js IIFE)
       './assets/app.js',

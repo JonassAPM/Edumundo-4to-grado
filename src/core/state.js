@@ -31,9 +31,9 @@ let _context = {};
  * @param {import('./storage.js').SaveData} saveData
  */
 export function initState(saveData) {
-  _saveData = saveData;
+  _saveData = saveData || {};
 
-  if (saveData.diagnostics.pretest_score === null) {
+  if (!saveData || !saveData.diagnostics || saveData.diagnostics.pretest_score === null) {
     _transition('WELCOME');
   } else {
     _transition('LOBBY');

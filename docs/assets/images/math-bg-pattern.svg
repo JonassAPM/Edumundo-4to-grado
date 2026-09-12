@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="180" height="180" viewBox="0 0 180 180">
+  <!-- Símbolos de Multiplicación (x) en diagonal -->
+  <g stroke="rgba(255, 255, 255, 0.20)" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round">
+    <!-- (35, 35) Multiplicación -->
+    <line x1="21" y1="21" x2="49" y2="49"/>
+    <line x1="49" y1="21" x2="21" y2="49"/>
+
+    <!-- (125, 125) Multiplicación -->
+    <line x1="111" y1="111" x2="139" y2="139"/>
+    <line x1="139" y1="111" x2="111" y2="139"/>
+
+    <!-- (125, 35) División: barra -->
+    <line x1="109" y1="35" x2="141" y2="35"/>
+
+    <!-- (35, 125) División: barra -->
+    <line x1="19" y1="125" x2="51" y2="125"/>
+
+    <!-- Círculo central (80, 80) -->
+    <circle cx="80" cy="80" r="16" fill="none"/>
+
+    <!-- Círculos en las cuatro esquinas que empatan perfectamente -->
+    <circle cx="0" cy="0" r="16" fill="none"/>
+    <circle cx="180" cy="0" r="16" fill="none"/>
+    <circle cx="0" cy="180" r="16" fill="none"/>
+    <circle cx="180" cy="180" r="16" fill="none"/>
+
+    <!-- Conexiones adicionales en cruz (+) en los bordes medios -->
+    <line x1="168" y1="80" x2="192" y2="80"/>
+    <line x1="180" y1="68" x2="180" y2="92"/>
+
+    <line x1="-12" y1="80" x2="12" y2="80"/>
+    <line x1="0" y1="68" x2="0" y2="92"/>
+
+    <line x1="80" y1="168" x2="80" y2="192"/>
+    <line x1="68" y1="180" x2="92" y2="180"/>
+
+    <line x1="80" y1="-12" x2="80" y2="12"/>
+    <line x1="68" y1="0" x2="92" y2="0"/>
+  </g>
+
+  <!-- Puntos para los símbolos de división (fill sólido semi-transparente) -->
+  <g fill="rgba(255, 255, 255, 0.20)">
+    <!-- División en (125, 35) -->
+    <circle cx="125" cy="24" r="4"/>
+    <circle cx="125" cy="46" r="4"/>
+
+    <!-- División en (35, 125) -->
+    <circle cx="35" cy="114" r="4"/>
+    <circle cx="35" cy="136" r="4"/>
+  </g>
+</svg>

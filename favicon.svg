@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
+  <!-- Círculo azul plano (sin degradados, bordes ni sombras) -->
+  <circle cx="256" cy="256" r="246" fill="#0284C7" />
+
+  <!-- Letra E en amarillo naranjoso plano, más alta y estilizada -->
+  <text x="256" y="256"
+        text-anchor="middle"
+        dominant-baseline="central"
+        font-family="'Arial Black', 'Arial Narrow', 'Trebuchet MS', system-ui, sans-serif"
+        font-weight="900"
+        font-size="340"
+        fill="#F59E0B"
+        transform="translate(256, 256) scale(0.85, 1.25) translate(-256, -256)">E</text>
+</svg>
