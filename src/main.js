@@ -1478,43 +1478,40 @@ function _tplStore() {
 }
 
 // ─── Lógica de Dificultad y Ejercicios 100% Aleatorios en Modo Libre ──────────
-function _getFreeModeTargetTime(topic, streak) {
+function _getFreeModeTargetTime(topic, solvedCount = 0) {
+  const tier = Math.floor(Math.max(0, solvedCount) / 2);
+  let base = 15;
+  let step = 2;
   switch (topic) {
     case 'm1_multiplicacion':
-      if (streak <= 2) return 15.0;
-      if (streak <= 5) return 12.0;
-      if (streak <= 8) return 9.5;
-      if (streak <= 11) return 7.0;
-      return 5.0;
+      base = 15;
+      step = 2; // Tier 0 (0-1): 15s | Tier 1 (2-3): 13s | Tier 2 (4-5): 11s | Tier 3 (6-7): 9s | Tier 4 (8-9): 7s | Tier 5+ (10+): 5s (MÍNIMO)
+      break;
     case 'm2_division':
-      if (streak <= 2) return 20.0;
-      if (streak <= 5) return 16.0;
-      if (streak <= 8) return 12.5;
-      if (streak <= 11) return 9.5;
-      return 7.0;
+      base = 20;
+      step = 3; // Tier 0 (0-1): 20s | Tier 1 (2-3): 17s | Tier 2 (4-5): 14s | Tier 3 (6-7): 11s | Tier 4 (8-9): 8s | Tier 5+ (10+): 5s (MÍNIMO)
+      break;
     case 'm3_fracciones_intro':
-      if (streak <= 2) return 25.0;
-      if (streak <= 5) return 20.0;
-      if (streak <= 8) return 16.0;
-      if (streak <= 11) return 12.0;
-      return 8.5;
+      base = 25;
+      step = 4; // Tier 0 (0-1): 25s | Tier 1 (2-3): 21s | Tier 2 (4-5): 17s | Tier 3 (6-7): 13s | Tier 4 (8-9): 9s | Tier 5+ (10+): 5s (MÍNIMO)
+      break;
     case 'm4_fracciones_ops':
-      if (streak <= 2) return 30.0;
-      if (streak <= 5) return 24.0;
-      if (streak <= 8) return 19.0;
-      if (streak <= 11) return 14.5;
-      return 10.5;
+      base = 30;
+      step = 5; // Tier 0 (0-1): 30s | Tier 1 (2-3): 25s | Tier 2 (4-5): 20s | Tier 3 (6-7): 15s | Tier 4 (8-9): 10s | Tier 5+ (10+): 5s (MÍNIMO)
+      break;
     default:
-      return 15.0;
+      base = 15;
+      step = 2;
   }
+  return Math.max(5.0, base - (tier * step));
 }
 
 // ─── Progresión Dinámica de Opciones en Modo Libre (3, 4, 5, hasta 6 máx) ─────
-function _getFreeModeNumOptions(streak) {
-  if (streak < 4) return 3;   // Inicial / Racha 0 a 3: 3 opciones
-  if (streak < 8) return 4;   // Racha 4 a 7: 4 opciones
-  if (streak < 12) return 5;  // Racha 8 a 11: 5 opciones
-  return 6;                   // Racha 12+: 6 opciones (MÁXIMO)
+function _getFreeModeNumOptions(solvedCount = 0) {
+  if (solvedCount < 3) return 3;   // Ejercicios 1 a 3 (0 a 2 resueltos): 3 opciones
+  if (solvedCount < 6) return 4;   // Ejercicios 4 a 6 (3 a 5 resueltos): 4 opciones
+  if (solvedCount < 9) return 5;   // Ejercicios 7 a 9 (6 a 8 resueltos): 5 opciones
+  return 6;                       // Ejercicios 10+ (9+ resueltos): 6 opciones (MÁXIMO)
 }
 
 /**
@@ -3404,7 +3401,7 @@ function _bindFreeMode(scr, ctx = {}) {
   let score = 0;
   let solvedCount = 0;
   let coinsFarmed = 0;
-  let currentTargetTime = _getFreeModeTargetTime(activeTopic, streak);
+  let currentTargetTime = _getFreeModeTargetTime(activeTopic, solvedCount);
   let remainingSec = currentTargetTime;
   let currentAnswer = 0;
 
@@ -3442,27 +3439,24 @@ function _bindFreeMode(scr, ctx = {}) {
   let discardRemaining = maxDiscard;
   let isDiscardActive = false;
 
-  function getEffectiveNumOptions(currStreak) {
+  function getEffectiveNumOptions(currSolved) {
     if (!isDiscardActive) {
-      return _getFreeModeNumOptions(currStreak);
+      return _getFreeModeNumOptions(currSolved);
     }
     // Si el poder de descarte mítico está activo:
-    // Racha 4-7: 2 opciones (4 - 2)
-    // Racha 8-11: 3 opciones (5 - 2)
-    // Racha 12-15: 4 opciones (6 - 2)
-    // Racha 16-19: 5 opciones
-    // Racha 20+: 6 opciones (límite máximo restaurado)
-    if (currStreak < 4) return 3;
-    if (currStreak < 8) return 2;
-    if (currStreak < 12) return 3;
-    if (currStreak < 16) return 4;
-    if (currStreak < 20) return 5;
-    return 6;
+    // 0-2 resueltos: 3 opciones
+    // 3-5 resueltos: 2 opciones (4 - 2)
+    // 6-8 resueltos: 3 opciones (5 - 2)
+    // 9+ resueltos: 4 opciones (6 - 2)
+    if (currSolved < 3) return 3;
+    if (currSolved < 6) return 2;
+    if (currSolved < 9) return 3;
+    return 4;
   }
 
   function renderPowerBar() {
     if (!powerBar) return;
-    const curOpts = getEffectiveNumOptions(streak);
+    const curOpts = getEffectiveNumOptions(solvedCount);
     const hasAura = avatarRarity !== 'basic';
 
     const avBorder = 'avatar-emoji-bordered';
@@ -3521,7 +3515,7 @@ function _bindFreeMode(scr, ctx = {}) {
         discardTitle = '¡Descarte Mítico activo! (-2 opciones en juego)';
         discardBadgeTxt = 'Activo';
       } else if (curOpts < 4) {
-        discardTitle = 'Se activa a partir de 4 opciones en pantalla (Racha 4+)';
+        discardTitle = 'Se activa a partir de 4 opciones en pantalla (3+ resueltos)';
       }
 
       discardBtnHtml = `
@@ -3572,7 +3566,7 @@ function _bindFreeMode(scr, ctx = {}) {
   }
 
   function useMythicDiscard() {
-    const curOpts = getEffectiveNumOptions(streak);
+    const curOpts = getEffectiveNumOptions(solvedCount);
     if (discardRemaining <= 0 || isDiscardActive || isResolving || remainingSec <= 0 || curOpts < 4) return;
     discardRemaining--;
     isDiscardActive = true;
@@ -3602,12 +3596,12 @@ function _bindFreeMode(scr, ctx = {}) {
 
   function spawnQuestion() {
     isResolving = false;
-    const ex = _genRandomFreeExercise(activeTopic, streak);
+    const ex = _genRandomFreeExercise(activeTopic, solvedCount);
     currentAnswer = ex.answer;
     if (eqDisplay) eqDisplay.textContent = ex.display;
     if (ctxDisplay) ctxDisplay.textContent = ex.context;
 
-    const numOptions = getEffectiveNumOptions(streak);
+    const numOptions = getEffectiveNumOptions(solvedCount);
     const choices = _genFreeModeChoices(currentAnswer, numOptions);
 
     if (optionsGrid) {
@@ -3649,12 +3643,12 @@ function _bindFreeMode(scr, ctx = {}) {
       coinsFarmed = solvedCount;
       const coinsGained = 1;
 
-      // REGLA DEL USUARIO: CADA ACIERTO RESETEA EL RELOJ DESDE CERO
-      currentTargetTime = _getFreeModeTargetTime(activeTopic, streak);
+      // REGLA DEL USUARIO: Dificultad escalonada cada 4 ejercicios, mínimo 5 segundos
+      currentTargetTime = _getFreeModeTargetTime(activeTopic, solvedCount);
       remainingSec = currentTargetTime;
 
       // Acelerar la música con adrenalina progresiva
-      setBgmSpeed(Math.min(1.8, 1.0 + streak * 0.05));
+      setBgmSpeed(Math.min(1.8, 1.0 + Math.min(streak, solvedCount) * 0.04));
 
       playCorrect(streak);
       playCoin();
@@ -3672,13 +3666,12 @@ function _bindFreeMode(scr, ctx = {}) {
         spawnQuestion();
       }, 130);
     } else {
-      // ─── ERROR EN MODO LIBRE (Penalización y reset de racha) ────────
+      // ─── ERROR EN MODO LIBRE (Penalización y reset de racha de combo) ────────
       btn?.classList.add('fm-choice-tile--wrong');
       setTimeout(() => btn?.classList.remove('fm-choice-tile--wrong'), 300);
 
       streak = 0;
       setBgmSpeed(1.0); // Restablece tempo
-      currentTargetTime = _getFreeModeTargetTime(activeTopic, 0);
       remainingSec = Math.max(0, remainingSec - 2.0);
       playError();
       _shakeCard(playCard);
