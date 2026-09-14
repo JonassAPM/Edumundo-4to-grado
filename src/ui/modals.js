@@ -497,18 +497,21 @@ export function showProfileModal({ user, modules, save, onSaveAlias, onOpenCloud
 
       <div class="modal-scroll-body">
         <div class="prof-content">
-          <div style="display:flex;flex-direction:column;align-items:center;width:100%">
+          <div class="prof-avatar-col">
             <div class="prof-avatar-big" id="prof-avatar-display" data-avatar="${currentAvatar}">
               <span class="prof-avatar-emoji avatar-emoji-bordered">${currentAvatar}</span>
             </div>
-            <div style="font-size:10px;font-weight:800;color:#64748B;margin-bottom:.25rem">Tus Avatares (desliza para elegir):</div>
-            <div class="prof-avatar-picker-window">
-              <div class="prof-avatar-picker">
+            <div class="prof-avatar-picker-title">Tus Avatares (desliza para elegir):</div>
+            <div class="prof-avatar-picker-window" id="prof-avatar-picker-window">
+              <div class="prof-avatar-picker" id="prof-avatar-picker">
                 ${unlockedAvatars.map((av) => `
                   <button class="prof-av-opt ${av === currentAvatar ? 'prof-av-opt--selected' : ''}" data-av="${av}">
                     <span class="prof-av-opt-emoji avatar-emoji-bordered">${av}</span>
                   </button>
                 `).join('')}
+              </div>
+              <div class="prof-hscroll-track" id="prof-hscroll-track" aria-hidden="true">
+                <div class="prof-hscroll-thumb" id="prof-hscroll-thumb"></div>
               </div>
             </div>
           </div>
@@ -592,8 +595,143 @@ export function showProfileModal({ user, modules, save, onSaveAlias, onOpenCloud
 
   document.body.appendChild(overlay);
 
+  // ─── Control y sincronización de barra horizontal persistente del selector de avatar ───
+  const pickerEl = overlay.querySelector('#prof-avatar-picker');
+  const hTrack = overlay.querySelector('#prof-hscroll-track');
+  const hThumb = overlay.querySelector('#prof-hscroll-thumb');
+  let hasMovedPicker = false;
+
+  if (pickerEl && hTrack && hThumb) {
+    let rafH = null;
+    const updateHScroll = () => {
+      if (rafH) cancelAnimationFrame(rafH);
+      rafH = requestAnimationFrame(() => {
+        const { scrollLeft, scrollWidth, clientWidth } = pickerEl;
+        const trackWidth = hTrack.clientWidth;
+        if (trackWidth <= 0) return;
+
+        if (scrollWidth <= clientWidth + 2) {
+          hThumb.style.width = '100%';
+          hThumb.style.transform = 'translateX(0px)';
+          return;
+        }
+
+        const thumbWidth = Math.max(26, Math.round((clientWidth / scrollWidth) * trackWidth));
+        hThumb.style.width = `${thumbWidth}px`;
+        const maxScroll = scrollWidth - clientWidth;
+        const maxThumbLeft = trackWidth - thumbWidth;
+        const thumbLeft = maxScroll > 0 ? (scrollLeft / maxScroll) * maxThumbLeft : 0;
+        hThumb.style.transform = `translateX(${thumbLeft}px)`;
+      });
+    };
+
+    pickerEl.addEventListener('scroll', updateHScroll, { passive: true });
+    window.addEventListener('resize', updateHScroll, { passive: true });
+
+    pickerEl.addEventListener('wheel', (e) => {
+      if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
+        pickerEl.scrollLeft += e.deltaY;
+        e.preventDefault();
+      }
+    }, { passive: false });
+
+    // Soporte para arrastre directo del thumb en PC y táctil
+    let isDraggingThumb = false;
+    let startThumbX = 0;
+    let startScrollLeft = 0;
+
+    hThumb.addEventListener('pointerdown', (e) => {
+      isDraggingThumb = true;
+      startThumbX = e.clientX;
+      startScrollLeft = pickerEl.scrollLeft;
+      hThumb.setPointerCapture(e.pointerId);
+      hThumb.classList.add('prof-hscroll-thumb--active');
+      e.preventDefault();
+    });
+
+    hThumb.addEventListener('pointermove', (e) => {
+      if (!isDraggingThumb) return;
+      const deltaX = e.clientX - startThumbX;
+      const trackWidth = hTrack.clientWidth;
+      const thumbWidth = hThumb.clientWidth;
+      const maxThumbLeft = trackWidth - thumbWidth;
+      const maxScroll = pickerEl.scrollWidth - pickerEl.clientWidth;
+      if (maxThumbLeft > 0) {
+        pickerEl.scrollLeft = startScrollLeft + (deltaX / maxThumbLeft) * maxScroll;
+      }
+    });
+
+    const onPointerEndThumb = (e) => {
+      if (!isDraggingThumb) return;
+      isDraggingThumb = false;
+      hThumb.classList.remove('prof-hscroll-thumb--active');
+      try { hThumb.releasePointerCapture(e.pointerId); } catch (_) {}
+    };
+
+    hThumb.addEventListener('pointerup', onPointerEndThumb);
+    hThumb.addEventListener('pointercancel', onPointerEndThumb);
+
+    // Clic en la pista para salto directo
+    hTrack.addEventListener('click', (e) => {
+      if (e.target === hThumb) return;
+      const rect = hTrack.getBoundingClientRect();
+      const clickX = e.clientX - rect.left;
+      const trackWidth = hTrack.clientWidth;
+      const ratio = Math.max(0, Math.min(1, clickX / trackWidth));
+      pickerEl.scrollLeft = ratio * (pickerEl.scrollWidth - pickerEl.clientWidth);
+    });
+
+    // Arrastre con ratón sobre los avatares en PC
+    let isMouseDownPicker = false;
+    let pickerStartX = 0;
+    let pickerStartScrollX = 0;
+
+    pickerEl.addEventListener('mousedown', (e) => {
+      isMouseDownPicker = true;
+      pickerStartX = e.clientX;
+      pickerStartScrollX = pickerEl.scrollLeft;
+      hasMovedPicker = false;
+    });
+
+    window.addEventListener('mousemove', (e) => {
+      if (!isMouseDownPicker) return;
+      const dx = e.clientX - pickerStartX;
+      if (Math.abs(dx) > 3) {
+        hasMovedPicker = true;
+        pickerEl.scrollLeft = pickerStartScrollX - dx;
+      }
+    });
+
+    window.addEventListener('mouseup', () => {
+      if (isMouseDownPicker) {
+        isMouseDownPicker = false;
+        setTimeout(() => { hasMovedPicker = false; }, 60);
+      }
+    });
+
+    // Sincronizaciones iniciales
+    updateHScroll();
+    setTimeout(updateHScroll, 40);
+    setTimeout(updateHScroll, 150);
+    setTimeout(updateHScroll, 350);
+
+    // Centrar suavemente el avatar seleccionado
+    const selAv = pickerEl.querySelector('.prof-av-opt--selected');
+    if (selAv) {
+      setTimeout(() => {
+        const targetX = selAv.offsetLeft - (pickerEl.clientWidth / 2) + (selAv.clientWidth / 2);
+        pickerEl.scrollTo({ left: Math.max(0, targetX), behavior: 'smooth' });
+        updateHScroll();
+      }, 80);
+    }
+  }
+
   overlay.querySelectorAll('.prof-av-opt').forEach((btn) => {
-    btn.addEventListener('click', () => {
+    btn.addEventListener('click', (e) => {
+      if (hasMovedPicker) {
+        e.preventDefault();
+        return;
+      }
       playClick();
       currentAvatar = btn.dataset.av;
       overlay.querySelectorAll('.prof-av-opt').forEach((b) => b.classList.remove('prof-av-opt--selected'));
