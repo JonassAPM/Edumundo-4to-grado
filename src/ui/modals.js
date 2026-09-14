@@ -22,7 +22,107 @@ import {
   formatAuthError,
 } from '../core/firebase.js';
 
-// ─── Utilidad Base para Modales ───────────────────────────────────────────────
+// ─── Utilidad Base para Modales y Barra de Desplazamiento Persistente ─────────
+
+/**
+ * Conecta una barra de desplazamiento estática y persistente en el lateral derecho
+ * de cualquier modal con .modal-scroll-body. Garantiza que en teléfonos y escritorios
+ * nunca se oculte si el contenido desborda, y mantiene un margen visual limpio con el contenido.
+ */
+export function attachPersistentScrollbar(modalBox) {
+  if (!modalBox) return;
+  const scrollEl = modalBox.querySelector('.modal-scroll-body');
+  if (!scrollEl) return;
+
+  // Evitar duplicar pista
+  let track = modalBox.querySelector(':scope > .modal-scrollbar-track');
+  if (!track) {
+    track = document.createElement('div');
+    track.className = 'modal-scrollbar-track';
+    track.setAttribute('aria-hidden', 'true');
+    track.innerHTML = '<div class="modal-scrollbar-thumb"></div>';
+    modalBox.appendChild(track);
+  }
+
+  const thumb = track.querySelector('.modal-scrollbar-thumb');
+  if (!thumb) return;
+
+  let rafId = null;
+  const update = () => {
+    if (rafId) cancelAnimationFrame(rafId);
+    rafId = requestAnimationFrame(() => {
+      const { scrollTop, scrollHeight, clientHeight } = scrollEl;
+      if (scrollHeight <= clientHeight + 4) {
+        track.style.display = 'none';
+        return;
+      }
+      track.style.display = 'block';
+      const trackHeight = track.clientHeight || (modalBox.clientHeight - 46);
+      if (trackHeight <= 0) return;
+      const thumbHeight = Math.max(26, Math.round((clientHeight / scrollHeight) * trackHeight));
+      thumb.style.height = `${thumbHeight}px`;
+      const maxScroll = scrollHeight - clientHeight;
+      const maxThumbTop = trackHeight - thumbHeight;
+      const thumbTop = maxScroll > 0 ? (scrollTop / maxScroll) * maxThumbTop : 0;
+      thumb.style.transform = `translateY(${thumbTop}px)`;
+    });
+  };
+
+  scrollEl.addEventListener('scroll', update, { passive: true });
+  window.addEventListener('resize', update, { passive: true });
+
+  // Disparar sincronizaciones para contenido diferido
+  update();
+  setTimeout(update, 50);
+  setTimeout(update, 150);
+  setTimeout(update, 400);
+
+  // Arrastre directo del thumb en pantallas táctiles o con ratón
+  let isDragging = false;
+  let startY = 0;
+  let startScrollTop = 0;
+
+  thumb.addEventListener('pointerdown', (e) => {
+    isDragging = true;
+    startY = e.clientY;
+    startScrollTop = scrollEl.scrollTop;
+    thumb.setPointerCapture(e.pointerId);
+    thumb.classList.add('modal-scrollbar-thumb--active');
+    e.preventDefault();
+  });
+
+  thumb.addEventListener('pointermove', (e) => {
+    if (!isDragging) return;
+    const deltaY = e.clientY - startY;
+    const trackHeight = track.clientHeight;
+    const thumbHeight = thumb.clientHeight;
+    const maxThumbTop = trackHeight - thumbHeight;
+    const maxScroll = scrollEl.scrollHeight - scrollEl.clientHeight;
+    if (maxThumbTop > 0) {
+      scrollEl.scrollTop = startScrollTop + (deltaY / maxThumbTop) * maxScroll;
+    }
+  });
+
+  const onPointerEnd = (e) => {
+    if (!isDragging) return;
+    isDragging = false;
+    thumb.classList.remove('modal-scrollbar-thumb--active');
+    try { thumb.releasePointerCapture(e.pointerId); } catch (_) {}
+  };
+
+  thumb.addEventListener('pointerup', onPointerEnd);
+  thumb.addEventListener('pointercancel', onPointerEnd);
+
+  // Clic en la pista para saltar directamente a la posición
+  track.addEventListener('click', (e) => {
+    if (e.target === thumb) return;
+    const rect = track.getBoundingClientRect();
+    const clickY = e.clientY - rect.top;
+    const trackHeight = track.clientHeight;
+    const ratio = Math.max(0, Math.min(1, clickY / trackHeight));
+    scrollEl.scrollTop = ratio * (scrollEl.scrollHeight - scrollEl.clientHeight);
+  });
+}
 
 function _createOverlay(extraClass = '') {
   playWhoosh();
@@ -43,7 +143,17 @@ function _createOverlay(extraClass = '') {
     }
   });
 
+  // Observador automático para vincular la barra de desplazamiento persistente a cualquier .modal-box
+  const observer = new MutationObserver(() => {
+    const box = overlay.querySelector('.modal-box');
+    if (box) {
+      attachPersistentScrollbar(box);
+    }
+  });
+  observer.observe(overlay, { childList: true, subtree: true });
+
   overlay._cleanup = () => {
+    observer.disconnect();
     document.removeEventListener('keydown', onKey);
     overlay.classList.add('modal-backdrop--out');
     setTimeout(() => overlay.remove(), 200);

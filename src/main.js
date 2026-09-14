@@ -40,6 +40,7 @@ import {
   showToast,
   showFreeModeBriefingModal,
   showCloudModal,
+  attachPersistentScrollbar,
 } from './ui/modals.js';
 import {
   cleanStudentId,
@@ -2703,6 +2704,8 @@ function _bind(state, scr, ctx) {
   switch (state) {
     /* ─── WELCOME (LOGIN / REGISTRO / INVITADO) ───────────────────────────── */
     case 'WELCOME': {
+      attachPersistentScrollbar($('#screen .modal-box--welcome'));
+
       const tabLogin = $('#wc-tab-login');
       const tabReg = $('#wc-tab-reg');
       const panelLogin = $('#wc-panel-login');
