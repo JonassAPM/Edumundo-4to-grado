@@ -572,8 +572,8 @@ function _tplLobby() {
   <div class="ow-bottom-bar lobby-bottom-bar">
     <div class="lobby-bottom-actions">
       <div class="lobby-btn-cloud-wrap">
-        <button class="btn btn-teal btn-sm" id="lobby-btn-cloud" title="Guardar progreso o gestionar cuenta en la nube">
-          ☁️ Guardar progreso
+        <button class="btn btn-teal btn-sm" id="lobby-btn-cloud" title="Progreso o gestionar cuenta en la nube">
+          ☁️ Progreso
           ${save.user?.student_id && !save.user?.cloud_synced ? `<span class="task-notif-badge" id="lobby-cloud-badge">!</span>` : ''}
         </button>
       </div>

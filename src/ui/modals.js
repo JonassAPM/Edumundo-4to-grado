@@ -1100,6 +1100,10 @@ export function showTasksModal({ save, onClaimTask, onClose, getSave }) {
       body.innerHTML = renderTasksHtml();
       bindEvents();
       updateModalHeader();
+      const box = overlay.querySelector('.modal-box');
+      if (box) {
+        attachPersistentScrollbar(box);
+      }
     }
   }
 
