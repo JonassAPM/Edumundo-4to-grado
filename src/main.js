@@ -411,12 +411,6 @@ function _renderHud({ title = '', sub = '', showBack = false, backTarget = 'LOBB
           <div class="currency-icon-badge">💎</div>
           <span class="currency-amount" id="hud-gems-txt">${save.user.gems ?? 10}</span>
         </div>
-        ${save.user?.student_id ? `
-          <button class="btn-round-brawl btn-round-brawl--blue" id="hud-btn-cloud" title="Nube Conectada (Doc: ${save.user.student_id})">
-            <span class="hud-cloud-icon">☁️</span>
-            ${!save.user?.cloud_synced ? '<span class="hud-cloud-dot"></span>' : ''}
-          </button>
-        ` : ''}
       </div>
       <button class="btn-round-brawl btn-round-brawl--fullscreen btn-fullscreen-toggle" title="${isFull ? 'Salir de pantalla completa' : 'Pantalla completa'}">
         ${_getFullscreenSvg(isFull)}
@@ -577,6 +571,12 @@ function _tplLobby() {
   <!-- Barra Inferior del Lobby -->
   <div class="ow-bottom-bar lobby-bottom-bar">
     <div class="lobby-bottom-actions">
+      <div class="lobby-btn-cloud-wrap">
+        <button class="btn btn-teal btn-sm" id="lobby-btn-cloud" title="Guardar progreso o gestionar cuenta en la nube">
+          ☁️ Guardar progreso
+          ${save.user?.student_id && !save.user?.cloud_synced ? `<span class="task-notif-badge" id="lobby-cloud-badge">!</span>` : ''}
+        </button>
+      </div>
       <div class="lobby-btn-tasks-wrap">
         <button class="btn btn-blue btn-sm" id="lobby-btn-tasks" title="Ver tareas y misiones">
           📋 Tareas
@@ -683,7 +683,7 @@ function _tplOverworld() {
 <div class="ow-bg">
   <div class="bg-sun"></div>
 
-  ${_renderHud({ title: '🗺️ Módulos de Aventura', sub: 'Selección de la Isla', showBack: true, backTarget: 'LOBBY' })}
+  ${_renderHud({ title: 'Módulos de Aventura', sub: 'Selección de la Isla', showBack: true, backTarget: 'LOBBY' })}
 
   <div class="ow-content-wrap">
     <h2 class="ow-callout-title">¡Elige un Módulo para Entrenar tu Mente!</h2>
@@ -1516,7 +1516,7 @@ function _tplStore() {
 <div class="ow-bg">
   <div class="bg-sun"></div>
 
-  ${_renderHud({ title: '🛍️ Minitienda de Aventuras', sub: 'Desbloquear Recompensas', showBack: true, backTarget: 'LOBBY' })}
+  ${_renderHud({ title: 'Minitienda de Aventuras', sub: 'Desbloquear Recompensas', showBack: true, backTarget: 'LOBBY' })}
 
   <div class="store-container">
     <!-- Pestañas de la tienda -->
@@ -2692,10 +2692,6 @@ function _bind(state, scr, ctx) {
     _persist(save);
     _syncHudAudioButtons();
   });
-  $('#hud-btn-cloud')?.addEventListener('click', () => {
-    playClick();
-    _openCloudDialog();
-  });
   $('#hud-btn-settings')?.addEventListener('click', () => {
     playClick();
     _openSettingsDialog();
@@ -2876,6 +2872,11 @@ function _bind(state, scr, ctx) {
         playPop();
         transition('STORE');
       }));
+
+      $('#lobby-btn-cloud')?.addEventListener('click', () => {
+        playClick();
+        _openCloudDialog();
+      });
 
       $('#lobby-btn-tasks')?.addEventListener('click', () => {
         _openTasksDialog();
@@ -4256,21 +4257,23 @@ function _s() {
   return getSaveData() || loadSave();
 }
 
-function _syncHudCloudDot() {
-  const btn = document.getElementById('hud-btn-cloud');
+function _syncLobbyCloudBadge() {
+  const btn = document.getElementById('lobby-btn-cloud');
   if (!btn) return;
   const save = _s();
-  const existingDot = btn.querySelector('.hud-cloud-dot');
+  const existingBadge = btn.querySelector('#lobby-cloud-badge');
   const hasUnsavedChanges = Boolean(save.user?.student_id && !save.user?.cloud_synced);
   if (hasUnsavedChanges) {
-    if (!existingDot) {
-      const dot = document.createElement('span');
-      dot.className = 'hud-cloud-dot';
-      btn.appendChild(dot);
+    if (!existingBadge) {
+      const badge = document.createElement('span');
+      badge.className = 'task-notif-badge';
+      badge.id = 'lobby-cloud-badge';
+      badge.textContent = '!';
+      btn.appendChild(badge);
     }
   } else {
-    if (existingDot) {
-      existingDot.remove();
+    if (existingBadge) {
+      existingBadge.remove();
     }
   }
 }
@@ -4285,7 +4288,7 @@ function _persist(d, markSynced = false) {
   }
   setSaveData(d);
   saveSave(d);
-  _syncHudCloudDot();
+  _syncLobbyCloudBadge();
 }
 
 // ─── Control de Orientación para Móviles ─────────────────────────────────────

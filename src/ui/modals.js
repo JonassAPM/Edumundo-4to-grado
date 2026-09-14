@@ -551,10 +551,10 @@ export function showProfileModal({ user, modules, save, onSaveAlias, onOpenCloud
                   <span class="prof-cloud-dot"></span>
                   <strong>Tarjeta ID: ${user.student_id}</strong>
                 </div>
-                <div class="prof-cloud-sub">🟢 Cuenta conectada a Firebase</div>
+                <div class="prof-cloud-sub">🟢 Cuenta conectada</div>
               </div>
               <button class="btn btn-red btn-sm prof-cloud-btn" id="prof-btn-cloud-logout" title="Cerrar sesión">
-                🚪 Cerrar Sesión
+                Cerrar Sesión
               </button>
             </div>
           ` : `
@@ -576,14 +576,14 @@ export function showProfileModal({ user, modules, save, onSaveAlias, onOpenCloud
 
         <div class="prof-mods-section">
           <h4 style="font-size:clamp(10px,1.2vw,13px);font-weight:800;color:#37474F;margin-bottom:.2rem">
-            🗺️ Progreso de Campaña
+            Progreso de Campaña
           </h4>
           ${modBreakdown}
         </div>
 
         <div class="modal-actions" style="margin-top:.5rem">
           <button class="btn btn-blue btn-md" id="prof-btn-close">
-            ✅ ¡LISTO!
+            ¡Listo!
           </button>
         </div>
       </div>
@@ -775,6 +775,9 @@ export function showTasksModal({ save, onClaimTask, onClose, getSave }) {
   playPop();
   const overlay = _createOverlay('modal-backdrop--tasks');
 
+  const expandedClasses = new Set();
+  const showCompletedClasses = new Set();
+
   function getCurrentSave() {
     return (getSave ? getSave() : null) || save;
   }
@@ -792,6 +795,33 @@ export function showTasksModal({ save, onClaimTask, onClose, getSave }) {
     return list;
   }
 
+  // Inicializar clases expandidas: las que tienen tareas para reclamar se abren automáticamente
+  function initAutoExpand() {
+    const s = getCurrentSave();
+    const organized = getOrganizedTasks(s);
+    let claimableFound = false;
+    organized.forEach(({ classInfo, activeTask }) => {
+      if (activeTask) {
+        const prog = activeTask.getProgress(s);
+        if (prog.completed) {
+          expandedClasses.add(classInfo.id);
+          claimableFound = true;
+        }
+      }
+    });
+    // Si ninguna está lista para reclamar, abrir las 2 primeras con tareas en progreso
+    if (!claimableFound) {
+      let opened = 0;
+      organized.forEach(({ classInfo, activeTask }) => {
+        if (activeTask && opened < 2) {
+          expandedClasses.add(classInfo.id);
+          opened++;
+        }
+      });
+    }
+  }
+  initAutoExpand();
+
   function updateModalHeader() {
     const s = getCurrentSave();
     const count = getClaimableTasksCount(s);
@@ -807,14 +837,14 @@ export function showTasksModal({ save, onClaimTask, onClose, getSave }) {
       if (claimable.length > 0) {
         const totalCoins = claimable.reduce((acc, t) => acc + (t.rewardCoins || 0), 0);
         claimAllBtn.style.display = 'inline-flex';
-        claimAllBtn.innerHTML = `🎁 ¡RECLAMAR TODO! (${claimable.length}) · +${totalCoins} 🪙`;
+        claimAllBtn.innerHTML = `¡Reclamar todo! (${claimable.length}) · +${totalCoins} 🪙`;
       } else {
         claimAllBtn.style.display = 'none';
       }
     }
     const closeBtn = overlay.querySelector('#tasks-btn-close');
     if (closeBtn) {
-      closeBtn.textContent = count > 0 ? '✅ ¡LISTO!' : '🎉 ¡TODO AL DÍA!';
+      closeBtn.textContent = count > 0 ? '¡Listo!' : '¡Todo al día!';
     }
   }
 
@@ -822,24 +852,37 @@ export function showTasksModal({ save, onClaimTask, onClose, getSave }) {
     const s = getCurrentSave();
     const organized = getOrganizedTasks(s);
     return organized.map(({ classInfo, completedTasks, activeTask, isAllDone }) => {
+      const classTasks = TASKS.filter((t) => t.classId === classInfo.id);
+      const totalInClass = classTasks.length;
+
+      let canClaim = false;
+      let progressPct = 0;
+      let prog = null;
+      let trophy = null;
+
+      if (activeTask) {
+        prog = activeTask.getProgress(s);
+        canClaim = Boolean(prog.completed);
+        progressPct = Math.min(100, Math.round((prog.current / prog.target) * 100));
+        trophy = TROPHIES.find((tr) => tr.id === activeTask.trophyId);
+      }
+
+      const isExpanded = expandedClasses.has(classInfo.id);
+      const showCompleted = showCompletedClasses.has(classInfo.id);
+
       const completedHtml = completedTasks.map((t) => {
-        const trophy = TROPHIES.find((tr) => tr.id === t.trophyId);
+        const tr = TROPHIES.find((item) => item.id === t.trophyId);
         return `
           <div class="task-row-tachada">
-            <span class="task-tachada-check">✅</span>
+            <span class="task-tachada-check">✓</span>
             <span class="task-tachada-title">${t.title}</span>
-            <span class="task-tachada-badge">Completada · 🏆 ${trophy ? trophy.title : 'Logro'}</span>
+            <span class="task-tachada-badge">Completada · 🏆 ${tr ? tr.title : 'Logro'}</span>
           </div>
         `;
       }).join('');
 
       let activeHtml = '';
       if (activeTask) {
-        const prog = activeTask.getProgress(s);
-        const canClaim = prog.completed;
-        const progressPct = Math.min(100, Math.round((prog.current / prog.target) * 100));
-        const trophy = TROPHIES.find((tr) => tr.id === activeTask.trophyId);
-
         activeHtml = `
           <div class="task-active-card ${canClaim ? 'task-active-card--claimable' : ''}">
             <div class="task-active-main">
@@ -864,7 +907,7 @@ export function showTasksModal({ save, onClaimTask, onClose, getSave }) {
               </div>
               ${canClaim ? `
                 <button class="btn btn-green btn-sm task-btn-claim pulse-claim" data-task-id="${activeTask.id}">
-                  ✨ ¡RECLAMAR!
+                  ¡Reclamar!
                 </button>
               ` : `
                 <span class="task-pending-label">⏳ En progreso (${progressPct}%)</span>
@@ -875,27 +918,58 @@ export function showTasksModal({ save, onClaimTask, onClose, getSave }) {
       } else if (isAllDone) {
         activeHtml = `
           <div class="task-class-done-banner">
-            🌟 ¡Completaste todos los retos de esta clase!
+            🌟 ¡Completaste todos los retos de esta clase! (${completedTasks.length}/${totalInClass})
           </div>
         `;
       }
 
       return `
-        <div class="task-class-block" style="border-left-color: ${classInfo.color}">
-          <div class="task-class-header">
-            <span class="task-class-icon">${classInfo.icon}</span>
-            <span class="task-class-name">${classInfo.name}</span>
+        <div class="task-class-accordion ${canClaim ? 'task-class-accordion--claimable' : ''} ${isExpanded ? 'task-class-accordion--open' : ''}" style="border-left-color: ${classInfo.color}">
+          <div class="task-class-accordion-header" data-class-id="${classInfo.id}" role="button" tabindex="0" title="Haz clic para desplegar o plegar">
+            <div class="task-class-header-left">
+              <span class="task-class-icon">${classInfo.icon}</span>
+              <span class="task-class-name">${classInfo.name}</span>
+            </div>
+            <div class="task-class-header-right">
+              ${canClaim ? '<span class="task-badge-claimable pulse-claim">¡Reclamar!</span>' : ''}
+              <span class="task-class-progress-pill">${completedTasks.length}/${totalInClass}</span>
+              <span class="task-accordion-chevron">${isExpanded ? '▲' : '▼'}</span>
+            </div>
           </div>
-          ${completedHtml ? `<div class="task-tachada-list">${completedHtml}</div>` : ''}
-          ${activeHtml}
+
+          <div class="task-class-accordion-body" style="display: ${isExpanded ? 'block' : 'none'}">
+            ${activeHtml}
+
+            ${completedTasks.length > 0 ? `
+              <div class="task-completed-accordion-wrap">
+                <button type="button" class="task-toggle-completed-btn" data-toggle-completed="${classInfo.id}">
+                  ${showCompleted ? `Ocultar completadas (${completedTasks.length}) ▲` : `Ver completadas (${completedTasks.length}) ▼`}
+                </button>
+                <div class="task-tachada-list" style="display: ${showCompleted ? 'flex' : 'none'}">
+                  ${completedHtml}
+                </div>
+              </div>
+            ` : ''}
+          </div>
         </div>
       `;
     }).join('');
   }
 
+  function refreshView() {
+    const body = overlay.querySelector('#tasks-list-container');
+    if (body) {
+      body.innerHTML = renderTasksHtml();
+      bindEvents();
+      updateModalHeader();
+    }
+  }
+
   function bindEvents() {
+    // Reclamar tarea individual
     overlay.querySelectorAll('.task-btn-claim').forEach((btn) => {
-      btn.addEventListener('click', () => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
         const taskId = btn.dataset.taskId;
         const task = TASKS.find((t) => t.id === taskId);
         if (!task) return;
@@ -907,16 +981,22 @@ export function showTasksModal({ save, onClaimTask, onClose, getSave }) {
           if (res) save = res;
         }
 
-        const body = overlay.querySelector('#tasks-list-container');
-        if (body) {
-          body.innerHTML = renderTasksHtml();
-          bindEvents();
-          updateModalHeader();
+        // Si la clase ya no tiene más tareas por reclamar, auto-colapsar
+        const s = getCurrentSave();
+        const classTasks = TASKS.filter((t) => t.classId === task.classId).sort((a, b) => a.order - b.order);
+        const claimed = new Set(s?.user?.claimed_tasks || []);
+        const nextActive = classTasks.find((t) => !claimed.has(t.id));
+        const nextIsClaimable = nextActive ? nextActive.getProgress(s).completed : false;
+        if (!nextIsClaimable) {
+          expandedClasses.delete(task.classId);
         }
+
+        refreshView();
         showToast(`¡Reclamaste +${task.rewardCoins} 🪙 y el Trofeo! 🏆`, 'ok', '🎉');
       });
     });
 
+    // Reclamar todas las tareas
     overlay.querySelector('#tasks-btn-claim-all')?.addEventListener('click', () => {
       const claimable = getClaimableTasks();
       if (claimable.length === 0) return;
@@ -934,13 +1014,54 @@ export function showTasksModal({ save, onClaimTask, onClose, getSave }) {
         }
       });
 
-      const body = overlay.querySelector('#tasks-list-container');
-      if (body) {
-        body.innerHTML = renderTasksHtml();
-        bindEvents();
-        updateModalHeader();
-      }
+      // Al reclamar todo, colapsar clases reclamadas
+      expandedClasses.clear();
+      initAutoExpand();
+
+      refreshView();
       showToast(`¡Reclamaste ${claimable.length} misiones! +${totalCoinsWon} 🪙 y Trofeos 🏆`, 'ok', '🎉');
+    });
+
+    // Clic en encabezado de acordeón
+    overlay.querySelectorAll('.task-class-accordion-header').forEach((hdr) => {
+      hdr.addEventListener('click', () => {
+        playClick();
+        const cid = hdr.dataset.classId;
+        if (expandedClasses.has(cid)) {
+          expandedClasses.delete(cid);
+        } else {
+          expandedClasses.add(cid);
+        }
+        refreshView();
+      });
+    });
+
+    // Clic en ver/ocultar completadas
+    overlay.querySelectorAll('.task-toggle-completed-btn').forEach((btn) => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        playClick();
+        const cid = btn.dataset.toggleCompleted;
+        if (showCompletedClasses.has(cid)) {
+          showCompletedClasses.delete(cid);
+        } else {
+          showCompletedClasses.add(cid);
+        }
+        refreshView();
+      });
+    });
+
+    // Controles rápidos: Expandir / Colapsar todo
+    overlay.querySelector('#tasks-btn-expand-all')?.addEventListener('click', () => {
+      playClick();
+      TASK_CLASSES.forEach((c) => expandedClasses.add(c.id));
+      refreshView();
+    });
+
+    overlay.querySelector('#tasks-btn-collapse-all')?.addEventListener('click', () => {
+      playClick();
+      expandedClasses.clear();
+      refreshView();
     });
   }
 
@@ -952,7 +1073,15 @@ export function showTasksModal({ save, onClaimTask, onClose, getSave }) {
 
       <div class="modal-scroll-body">
         <div class="tasks-banner-info">
-          <span>🎯 ¡Supera desafíos por clases! Al cumplir una tarea se tachará, reclamarás monedas y trofeos, y se revelará la siguiente meta.</span>
+          <span>¡Supera desafíos por clases! Al cumplir una tarea se tachará, reclamarás monedas y trofeos, y se revelará la siguiente meta.</span>
+        </div>
+
+        <div class="tasks-toolbar">
+          <span class="tasks-toolbar-info">Toca una categoría para ver o esconder sus retos:</span>
+          <div class="tasks-toolbar-actions">
+            <button type="button" class="tasks-quick-toggle-btn" id="tasks-btn-expand-all">Expandir todas</button>
+            <button type="button" class="tasks-quick-toggle-btn" id="tasks-btn-collapse-all">Colapsar todas</button>
+          </div>
         </div>
 
         <div class="tasks-list" id="tasks-list-container">
@@ -961,10 +1090,10 @@ export function showTasksModal({ save, onClaimTask, onClose, getSave }) {
 
         <div class="modal-actions" style="margin-top:.6rem;display:flex;gap:.6rem;justify-content:center;align-items:center;flex-wrap:wrap">
           <button class="btn btn-green btn-md pulse-claim" id="tasks-btn-claim-all" style="display:none">
-            🎁 ¡RECLAMAR TODO!
+            ¡Reclamar todo!
           </button>
           <button class="btn btn-blue btn-md btn-close-modal" id="tasks-btn-close">
-            ✅ ¡LISTO!
+            ¡Listo!
           </button>
         </div>
       </div>
@@ -1017,7 +1146,7 @@ export function showSettingsModal({ sfxOn, musicOn, onToggleSfx, onToggleMusic, 
           </div>
 
           <div class="settings-section">
-            <h4 class="settings-section-title">👨‍🏫 Información Institucional</h4>
+            <h4 class="settings-section-title">Información Institucional</h4>
             <div class="settings-docente-box">
               <p><strong>I.E. Técnico Industrial Laureano Gómez Castro</strong></p>
               <p>Sede Primaria · Aguachica, Cesar · Grado 4.°</p>
@@ -1040,7 +1169,7 @@ export function showSettingsModal({ sfxOn, musicOn, onToggleSfx, onToggleMusic, 
 
         <div class="modal-actions" style="margin-top:.5rem">
           <button class="btn btn-blue btn-md" id="set-btn-close">
-            ✅ CERRAR AJUSTES
+            Cerrar Ajustes
           </button>
         </div>
       </div>
@@ -1439,7 +1568,7 @@ export function showCloudModal({ save, getSave, onSaveUpdate, onLogout, onClose 
                 <span class="prof-cloud-dot"></span>
                 <span>Tarjeta ID: <strong>${user.student_id}</strong></span>
               </div>
-              <span class="cloud-badge-connected">🟢 Conectado con Firebase</span>
+              <span class="cloud-badge-connected">🟢 Conectado</span>
             </div>
           </div>
 
@@ -1463,14 +1592,14 @@ export function showCloudModal({ save, getSave, onSaveUpdate, onLogout, onClose 
 
           <div class="cloud-actions-box">
             <button class="btn btn-green btn-md cloud-action-btn" id="cm-btn-upload">
-              <span style="font-size:18px">☁️⬆️</span>
+              <span style="font-size:18px">⬆️</span>
               <div style="text-align:left">
                 <strong>Subir Progreso a la Nube</strong>
               </div>
             </button>
 
             <button class="btn btn-blue btn-md cloud-action-btn" id="cm-btn-download">
-              <span style="font-size:18px">☁️⬇️</span>
+              <span style="font-size:18px">⬇️</span>
               <div style="text-align:left">
                 <strong>Descargar Progreso de la Nube</strong>
               </div>
@@ -1488,10 +1617,10 @@ export function showCloudModal({ save, getSave, onSaveUpdate, onLogout, onClose 
 
           <div style="display:flex;gap:.5rem;width:100%;margin-top:.8rem">
             <button class="btn btn-red btn-sm" id="cm-btn-logout" style="flex:0.8">
-              🚪 Salir de la Cuenta
+              Salir de la Cuenta
             </button>
             <button class="btn btn-gray btn-sm" id="cm-btn-close" style="flex:1">
-              ✅ Cerrar
+              Cerrar
             </button>
           </div>
         </div>
