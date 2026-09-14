@@ -4969,11 +4969,12 @@ body.is-landscape #rotate-screen {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: .6rem;
-  padding: .5rem .7rem;
+  gap: .5rem;
+  padding: .45rem .65rem;
   border-radius: var(--r-md);
   border: 2px solid;
   text-align: left;
+  box-sizing: border-box;
 }
 
 .prof-cloud-card--active {
@@ -4989,13 +4990,14 @@ body.is-landscape #rotate-screen {
 }
 
 .prof-cloud-icon {
-  font-size: clamp(20px, 2.8vw, 26px);
+  font-size: clamp(20px, 2.6vw, 26px);
   line-height: 1;
   flex-shrink: 0;
 }
 
 .prof-cloud-info {
   flex: 1;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 1px;
@@ -5005,8 +5007,11 @@ body.is-landscape #rotate-screen {
   display: flex;
   align-items: center;
   gap: 5px;
-  font-size: clamp(10.5px, 1.3vw, 13px);
+  font-size: clamp(10px, 1.2vw, 12.5px);
   color: #0F172A;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .prof-cloud-dot {
@@ -5023,10 +5028,32 @@ body.is-landscape #rotate-screen {
 }
 
 .prof-cloud-sub {
-  font-size: clamp(9px, 1.1vw, 11px);
+  font-size: clamp(8.5px, 1.05vw, 10.5px);
   font-weight: 600;
   color: #64748B;
-  line-height: 1.25;
+  line-height: 1.2;
 }
+
+.prof-cloud-btn {
+  flex-shrink: 0;
+  white-space: nowrap;
+  padding: clamp(.3rem, 0.7vw, .45rem) clamp(.45rem, 1.2vw, .75rem) !important;
+  font-size: clamp(9px, 1.15vw, 11.5px) !important;
+  font-weight: 900 !important;
+}
+
+/* En pantallas móviles (landscape y portrait estrechos) */
+@media (max-width: 560px) {
+  .prof-cloud-card {
+    flex-wrap: wrap;
+    gap: .35rem;
+  }
+  .prof-cloud-btn {
+    width: 100%;
+    justify-content: center;
+    margin-top: .15rem;
+  }
+}
+
 
 

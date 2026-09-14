@@ -349,7 +349,7 @@ export function showPauseModal({ onResume, onQuit }) {
 // 5. MODAL DE PERFIL DE JUGADOR (Reemplaza alert)
 // ═══════════════════════════════════════════════════════════════════════════════
 
-export function showProfileModal({ user, modules, save, onSaveAlias, onOpenCloud, onClose }) {
+export function showProfileModal({ user, modules, save, onSaveAlias, onOpenCloud, onLogoutAccount, onClose }) {
   playPop();
   const overlay = _createOverlay();
   const actualSave = save || { user, modules };
@@ -441,10 +441,10 @@ export function showProfileModal({ user, modules, save, onSaveAlias, onOpenCloud
                   <span class="prof-cloud-dot"></span>
                   <strong>Tarjeta ID: ${user.student_id}</strong>
                 </div>
-                <div class="prof-cloud-sub">Tu partida se guarda en la nube</div>
+                <div class="prof-cloud-sub">🟢 Cuenta conectada a Firebase</div>
               </div>
-              <button class="btn btn-cyan btn-xs" id="prof-btn-cloud-manage">
-                ☁️ Gestionar Nube
+              <button class="btn btn-red btn-sm prof-cloud-btn" id="prof-btn-cloud-logout" title="Cerrar sesión">
+                🚪 Cerrar Sesión
               </button>
             </div>
           ` : `
@@ -455,9 +455,9 @@ export function showProfileModal({ user, modules, save, onSaveAlias, onOpenCloud
                   <span class="prof-cloud-dot prof-cloud-dot--warn"></span>
                   <strong>Sin cuenta vinculada</strong>
                 </div>
-                <div class="prof-cloud-sub">Vincula tu Tarjeta de Identidad para guardar tu avance y no perderlo si se formatea este equipo.</div>
+                <div class="prof-cloud-sub">Vincula tu Tarjeta de Identidad para no perder tu avance si se formatea este equipo.</div>
               </div>
-              <button class="btn btn-green btn-xs" id="prof-btn-cloud-link">
+              <button class="btn btn-green btn-sm prof-cloud-btn" id="prof-btn-cloud-link">
                 🔗 Vincular Cuenta
               </button>
             </div>
@@ -509,10 +509,21 @@ export function showProfileModal({ user, modules, save, onSaveAlias, onOpenCloud
     showToast('¡Nombre guardado con éxito! 👤', 'ok', '💾');
   });
 
-  overlay.querySelector('#prof-btn-cloud-manage')?.addEventListener('click', () => {
+  overlay.querySelector('#prof-btn-cloud-logout')?.addEventListener('click', () => {
     playClick();
-    overlay._cleanup();
-    if (onOpenCloud) onOpenCloud();
+    showConfirmModal({
+      title: '🚪 ¿CERRAR SESIÓN?',
+      message: 'Tu progreso actual en la nube quedará a salvo. Podrás volver a entrar con tu Tarjeta de Identidad.',
+      confirmText: 'Sí, Salir',
+      cancelText: 'Cancelar',
+      onConfirm: async () => {
+        await logoutStudent();
+        overlay._cleanup();
+        if (onLogoutAccount) {
+          onLogoutAccount();
+        }
+      },
+    });
   });
 
   overlay.querySelector('#prof-btn-cloud-link')?.addEventListener('click', () => {

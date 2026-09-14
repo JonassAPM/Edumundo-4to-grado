@@ -410,11 +410,13 @@ function _renderHud({ title = '', sub = '', showBack = false, backTarget = 'LOBB
           <div class="currency-icon-badge">💎</div>
           <span class="currency-amount" id="hud-gems-txt">${save.user.gems ?? 10}</span>
         </div>
+        ${save.user?.student_id ? `
+          <button class="btn-round-brawl btn-round-brawl--blue btn-round-brawl--connected" id="hud-btn-cloud" title="Nube Conectada (Doc: ${save.user.student_id})">
+            <span class="hud-cloud-icon">☁️</span>
+            <span class="hud-cloud-dot"></span>
+          </button>
+        ` : ''}
       </div>
-      <button class="btn-round-brawl btn-round-brawl--blue ${save.user?.student_id ? 'btn-round-brawl--connected' : ''}" id="hud-btn-cloud" title="${save.user?.student_id ? 'Nube Conectada (Doc: ' + save.user.student_id + ')' : 'Sincronizar en la Nube'}">
-        <span class="hud-cloud-icon">☁️</span>
-        ${save.user?.student_id ? '<span class="hud-cloud-dot"></span>' : ''}
-      </button>
       <button class="btn-round-brawl btn-round-brawl--fullscreen btn-fullscreen-toggle" title="${isFull ? 'Salir de pantalla completa' : 'Pantalla completa'}">
         ${_getFullscreenSvg(isFull)}
       </button>
@@ -581,9 +583,6 @@ function _tplLobby() {
           ${claimableTasksCount > 0 ? `<span class="task-notif-badge" id="lobby-tasks-badge">${claimableTasksCount}</span>` : ''}
         </button>
       </div>
-      <button class="btn btn-cyan btn-sm" id="lobby-btn-cloud" title="Guardar o Cargar en la Nube">
-        ☁️ Nube ${save.user?.student_id ? '🟢' : ''}
-      </button>
       <div class="lobby-profile-stars-row">
         <button class="btn btn-gold btn-sm" id="lobby-btn-profile" title="Ver perfil de aventurero">
           👤 Mi Perfil
@@ -2880,11 +2879,6 @@ function _bind(state, scr, ctx) {
         _openTasksDialog();
       });
 
-      $('#lobby-btn-cloud')?.addEventListener('click', () => {
-        playClick();
-        _openCloudDialog();
-      });
-
       $('#lobby-btn-profile')?.addEventListener('click', () => {
         _openProfileDialog();
       });
@@ -4057,6 +4051,13 @@ function _openProfileDialog() {
     },
     onOpenCloud: () => {
       _openCloudDialog();
+    },
+    onLogoutAccount: async () => {
+      await logoutStudent();
+      const fresh = resetSave();
+      fresh.diagnostics.pretest_score = null;
+      _persist(fresh);
+      transition('WELCOME');
     },
   });
 }
