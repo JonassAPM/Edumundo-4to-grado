@@ -411,9 +411,9 @@ function _renderHud({ title = '', sub = '', showBack = false, backTarget = 'LOBB
           <span class="currency-amount" id="hud-gems-txt">${save.user.gems ?? 10}</span>
         </div>
         ${save.user?.student_id ? `
-          <button class="btn-round-brawl btn-round-brawl--blue btn-round-brawl--connected" id="hud-btn-cloud" title="Nube Conectada (Doc: ${save.user.student_id})">
+          <button class="btn-round-brawl btn-round-brawl--blue" id="hud-btn-cloud" title="Nube Conectada (Doc: ${save.user.student_id})">
             <span class="hud-cloud-icon">☁️</span>
-            <span class="hud-cloud-dot"></span>
+            ${!save.user?.cloud_synced ? '<span class="hud-cloud-dot"></span>' : ''}
           </button>
         ` : ''}
       </div>
@@ -439,83 +439,82 @@ function _tplWelcome() {
   <div class="bg-cloud-bottom"></div>
 
   <div style="flex:1;display:flex;align-items:center;justify-content:center;padding:1rem;position:relative;z-index:10">
-    <div class="modal-box modal-box--welcome" style="max-width:440px;text-align:center;align-items:center">
+    <div class="modal-box modal-box--welcome" style="text-align:center;align-items:center">
       <div class="modal-ribbon modal-ribbon--victory">
         <span>🎒 ¡BIENVENIDO A EDUAVENTURA!</span>
       </div>
 
-      <div style="font-size:clamp(38px,5vw,54px);margin:.7rem 0 .1rem;animation:dioramaFloat 3s ease-in-out infinite">
-        ${currentAvatar}
-      </div>
-
-      <h1 style="font-size:clamp(17px,2.5vw,23px);font-weight:900;color:#0F172A;line-height:1.2">
-        EduAventura G4
-      </h1>
-      <p style="font-size:clamp(10.5px,1.3vw,13px);color:#0284C7;font-weight:800;margin-bottom:.5rem">
-        Aventuras Matemáticas · 4.° Grado Primaria
-      </p>
-
-      <!-- Pestañas: Iniciar Sesión / Crear Cuenta -->
-      <div class="cloud-tabs-nav" style="width:100%;margin-bottom:.5rem">
-        <button class="cloud-tab-btn cloud-tab-btn--active" id="wc-tab-login">
-          🔑 Ya tengo cuenta
-        </button>
-        <button class="cloud-tab-btn" id="wc-tab-reg">
-          🌟 Crear cuenta
-        </button>
-      </div>
-
-      <!-- Panel: Iniciar Sesión -->
-      <div class="cloud-tab-panel" id="wc-panel-login" style="width:100%">
-        <div class="cloud-input-group">
-          <label for="wc-login-id" class="cloud-label">Tarjeta de Identidad / Cédula:</label>
-          <input id="wc-login-id" class="prof-alias-input" type="text" inputmode="numeric"
-                 placeholder="Ingresa tu documento (ej: 1098765432)" style="width:100%;text-align:center" />
-          <span class="cloud-hint">Tu documento es tu llave para entrar y recuperar tu partida.</span>
+      <div class="modal-scroll-body" style="width:100%;align-items:center;text-align:center">
+        <div style="font-size:clamp(38px,5vw,54px);margin:.7rem 0 .1rem;animation:dioramaFloat 3s ease-in-out infinite">
+          ${currentAvatar}
         </div>
 
-        <div id="wc-login-err" class="cloud-err-msg" style="display:none"></div>
+        <h1 style="font-size:clamp(17px,2.5vw,23px);font-weight:900;color:#0F172A;line-height:1.2">
+          EduAventura G4
+        </h1>
+        <p style="font-size:clamp(10.5px,1.3vw,13px);color:#0284C7;font-weight:800;margin-bottom:.5rem">
+          Aventuras Matemáticas · 4.° Grado Primaria
+        </p>
 
-        <div class="modal-actions modal-actions--stacked" style="width:100%;margin-top:.5rem">
-          <button id="wc-btn-login" class="btn btn-green btn-lg" style="width:100%">
-            📥 ¡ENTRAR Y CARGAR MI AVANCE!
+        <!-- Pestañas: Crear Cuenta / Iniciar Sesión -->
+        <div class="cloud-tabs-nav" style="width:100%;margin-bottom:.5rem">
+          <button class="cloud-tab-btn cloud-tab-btn--active" id="wc-tab-reg">
+            🌟 Crear cuenta
+          </button>
+          <button class="cloud-tab-btn" id="wc-tab-login">
+            🔑 Ya tengo cuenta
           </button>
         </div>
-      </div>
 
-      <!-- Panel: Crear Cuenta -->
-      <div class="cloud-tab-panel" id="wc-panel-reg" style="width:100%;display:none">
-        <div class="cloud-input-group">
-          <label for="wc-reg-name" class="cloud-label">Primer Nombre y Primer Apellido:</label>
-          <input id="wc-reg-name" class="prof-alias-input" type="text" maxlength="30"
-                 placeholder="Ej: Juan Pérez" value="${_esc(alias)}" style="width:100%;text-align:center" />
-          <span class="cloud-hint">Tu apodo de aventurero dentro del juego.</span>
+        <!-- Panel: Crear Cuenta (por defecto) -->
+        <div class="cloud-tab-panel" id="wc-panel-reg" style="width:100%">
+          <div class="cloud-input-group">
+            <label for="wc-reg-name" class="cloud-label">Primer Nombre y Primer Apellido:</label>
+            <input id="wc-reg-name" class="prof-alias-input" type="text" maxlength="30"
+                   placeholder="Ej: Juan Pérez" value="${_esc(alias)}" style="width:100%;text-align:center" />
+          </div>
+
+          <div class="cloud-input-group" style="margin-top:.45rem">
+            <label for="wc-reg-id" class="cloud-label">Tarjeta de Identidad / Cédula:</label>
+            <input id="wc-reg-id" class="prof-alias-input" type="text" inputmode="numeric"
+                   placeholder="Solo números (ej: 1098765432)" style="width:100%;text-align:center" />
+          </div>
+
+          <div id="wc-reg-err" class="cloud-err-msg" style="display:none"></div>
+
+          <div class="modal-actions modal-actions--stacked" style="width:100%;margin-top:.6rem">
+            <button id="wc-btn-reg" class="btn btn-orange btn-lg" style="width:100%">
+              🚀 ¡CREAR CUENTA Y JUGAR!
+            </button>
+          </div>
         </div>
 
-        <div class="cloud-input-group" style="margin-top:.35rem">
-          <label for="wc-reg-id" class="cloud-label">Tarjeta de Identidad / Cédula:</label>
-          <input id="wc-reg-id" class="prof-alias-input" type="text" inputmode="numeric"
-                 placeholder="Solo números (ej: 1098765432)" style="width:100%;text-align:center" />
-          <span class="cloud-hint">Única para ti, así no se confunde con otros estudiantes.</span>
+        <!-- Panel: Iniciar Sesión -->
+        <div class="cloud-tab-panel" id="wc-panel-login" style="width:100%;display:none">
+          <div class="cloud-input-group">
+            <label for="wc-login-id" class="cloud-label">Tarjeta de Identidad / Cédula:</label>
+            <input id="wc-login-id" class="prof-alias-input" type="text" inputmode="numeric"
+                   placeholder="Ingresa tu documento (ej: 1098765432)" style="width:100%;text-align:center" />
+          </div>
+
+          <div id="wc-login-err" class="cloud-err-msg" style="display:none"></div>
+
+          <div class="modal-actions modal-actions--stacked" style="width:100%;margin-top:.6rem">
+            <button id="wc-btn-login" class="btn btn-green btn-lg" style="width:100%">
+              📥 ¡ENTRAR Y CARGAR MI AVANCE!
+            </button>
+          </div>
         </div>
 
-        <div id="wc-reg-err" class="cloud-err-msg" style="display:none"></div>
-
-        <div class="modal-actions modal-actions--stacked" style="width:100%;margin-top:.5rem">
-          <button id="wc-btn-reg" class="btn btn-orange btn-lg" style="width:100%">
-            🚀 ¡CREAR CUENTA Y JUGAR!
+        <div style="margin-top:.65rem">
+          <button id="wc-btn-guest" class="btn-guest-link">
+            🕹️ Entrar sin cuenta (Modo Invitado Offline)
           </button>
         </div>
-      </div>
 
-      <div style="margin-top:.55rem">
-        <button id="wc-btn-guest" class="btn-guest-link">
-          🕹️ Entrar sin cuenta (Modo Invitado Offline)
-        </button>
-      </div>
-
-      <div style="font-size:clamp(8.5px,1.1vw,11px);color:#94A3B8;margin-top:.5rem;font-weight:600">
-        I.E. Técnico Industrial Laureano Gómez Castro · Sincronización en la Nube
+        <div style="font-size:clamp(8.5px,1.1vw,11px);color:#94A3B8;margin-top:.55rem;font-weight:600">
+          I.E. Técnico Industrial Laureano Gómez Castro · Sincronización en la Nube
+        </div>
       </div>
     </div>
   </div>
@@ -2776,7 +2775,7 @@ function _bind(state, scr, ctx) {
         save.user.alias = res.user.displayName || save.user.alias;
         save.user.cloud_synced = true;
         save.diagnostics.pretest_score = 0;
-        _persist(save);
+        _persist(save, true);
 
         startBGM();
         playVictory();
@@ -2836,7 +2835,7 @@ function _bind(state, scr, ctx) {
         save.user.cloud_synced = true;
         save.diagnostics.pretest_score = 0;
         await saveProgressToCloud(save);
-        _persist(save);
+        _persist(save, true);
 
         startBGM();
         playVictory();
@@ -4053,10 +4052,16 @@ function _openProfileDialog() {
       _openCloudDialog();
     },
     onLogoutAccount: async () => {
+      const save = _s();
+      if (save.user?.student_id) {
+        try {
+          await saveProgressToCloud(save);
+        } catch (_) {}
+      }
       await logoutStudent();
       const fresh = resetSave();
       fresh.diagnostics.pretest_score = null;
-      _persist(fresh);
+      _persist(fresh, true);
       transition('WELCOME');
     },
   });
@@ -4066,15 +4071,22 @@ function _openCloudDialog() {
   playPop();
   showCloudModal({
     save: _s(),
+    getSave: () => _s(),
     onSaveUpdate: (updatedSave) => {
-      _persist(updatedSave);
+      _persist(updatedSave, Boolean(updatedSave.user?.cloud_synced));
       transition(getCurrentState() || 'LOBBY');
     },
     onLogout: async () => {
+      const save = _s();
+      if (save.user?.student_id) {
+        try {
+          await saveProgressToCloud(save);
+        } catch (_) {}
+      }
       await logoutStudent();
       const fresh = resetSave();
       fresh.diagnostics.pretest_score = null;
-      _persist(fresh);
+      _persist(fresh, true);
       transition('WELCOME');
     },
   });
@@ -4241,9 +4253,36 @@ function _s() {
   return getSaveData() || loadSave();
 }
 
-function _persist(d) {
+function _syncHudCloudDot() {
+  const btn = document.getElementById('hud-btn-cloud');
+  if (!btn) return;
+  const save = _s();
+  const existingDot = btn.querySelector('.hud-cloud-dot');
+  const hasUnsavedChanges = Boolean(save.user?.student_id && !save.user?.cloud_synced);
+  if (hasUnsavedChanges) {
+    if (!existingDot) {
+      const dot = document.createElement('span');
+      dot.className = 'hud-cloud-dot';
+      btn.appendChild(dot);
+    }
+  } else {
+    if (existingDot) {
+      existingDot.remove();
+    }
+  }
+}
+
+function _persist(d, markSynced = false) {
+  if (d?.user?.student_id) {
+    if (markSynced) {
+      d.user.cloud_synced = true;
+    } else {
+      d.user.cloud_synced = false;
+    }
+  }
   setSaveData(d);
   saveSave(d);
+  _syncHudCloudDot();
 }
 
 // ─── Control de Orientación para Móviles ─────────────────────────────────────

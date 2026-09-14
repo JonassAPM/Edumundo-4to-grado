@@ -289,6 +289,9 @@ export async function saveProgressToCloud(saveData) {
       stars: clonedSave.user?.stars_total || 0,
       coins: clonedSave.user?.coins || 0,
       gems: clonedSave.user?.gems || 0,
+      avatar: clonedSave.user?.avatar || '🧒',
+      title: clonedSave.user?.title || 'Novato Matemático',
+      claimedTasks: clonedSave.user?.claimed_tasks || [],
       saveData: clonedSave,
       updatedAtISO: timestampISO,
       serverTime: serverTimestamp(),
@@ -320,9 +323,22 @@ export async function fetchProgressFromCloud() {
     }
 
     const docData = snap.data();
+    const cloudSave = docData.saveData || { user: {}, modules: {} };
+    if (!cloudSave.user) cloudSave.user = {};
+    if (docData.avatar && (!cloudSave.user.avatar || cloudSave.user.avatar === '🧒')) {
+      cloudSave.user.avatar = docData.avatar;
+    }
+    if (docData.title && (!cloudSave.user.title || cloudSave.user.title === 'Novato Matemático')) {
+      cloudSave.user.title = docData.title;
+    }
+    if (Array.isArray(docData.claimedTasks) && docData.claimedTasks.length > 0) {
+      const set = new Set([...(cloudSave.user.claimed_tasks || []), ...docData.claimedTasks]);
+      cloudSave.user.claimed_tasks = Array.from(set);
+    }
+
     return {
       ok: true,
-      data: docData.saveData,
+      data: cloudSave,
       updatedAt: docData.updatedAtISO || null,
       stars: docData.stars || 0,
       coins: docData.coins || 0,
@@ -359,19 +375,53 @@ export function smartMergeSave(localSave, cloudSave) {
   merged.user.coins = Math.max(merged.user.coins || 0, cloud.user?.coins || 0);
   merged.user.gems = Math.max(merged.user.gems || 0, cloud.user?.gems || 0);
 
-  // 2. Avatares y Títulos: unión única
+  // 2. Avatar y Título seleccionados (Lema)
+  // Si en la nube o en local hay un avatar o título personalizado, preservarlo
+  if (cloud.user?.avatar && (merged.user.avatar === '🧒' || cloud.user.avatar !== '🧒')) {
+    merged.user.avatar = cloud.user.avatar;
+  }
+  if (cloud.user?.title && (merged.user.title === 'Novato Matemático' || cloud.user.title !== 'Novato Matemático')) {
+    merged.user.title = cloud.user.title;
+  }
+
+  // 3. Avatares y Títulos desbloqueados: unión única
   const localAvatars = new Set(merged.user.unlocked_avatars || ['🧒', '👧']);
   (cloud.user?.unlocked_avatars || []).forEach((av) => localAvatars.add(av));
+  if (merged.user.avatar) localAvatars.add(merged.user.avatar);
   merged.user.unlocked_avatars = Array.from(localAvatars);
 
   const localTitles = new Set(merged.user.unlocked_titles || ['Novato Matemático']);
   (cloud.user?.unlocked_titles || []).forEach((ti) => localTitles.add(ti));
+  if (merged.user.title) localTitles.add(merged.user.title);
   merged.user.unlocked_titles = Array.from(localTitles);
 
-  // 3. Logros: unión única
+  // 4. Logros: unión única
   const localAch = new Set(merged.user.achievements || []);
   (cloud.user?.achievements || []).forEach((a) => localAch.add(a));
   merged.user.achievements = Array.from(localAch);
+
+  // 5. Tareas Reclamadas: unión única (Evita duplicar reclamos o bucle de dinero infinito)
+  const localTasks = new Set(merged.user.claimed_tasks || []);
+  (cloud.user?.claimed_tasks || []).forEach((t) => localTasks.add(t));
+  merged.user.claimed_tasks = Array.from(localTasks);
+
+  // 6. Ruleta: giros totales y último giro
+  merged.user.total_spins = Math.max(merged.user.total_spins || 0, cloud.user?.total_spins || 0);
+  if (cloud.user?.roulette_last_spin) {
+    merged.user.roulette_last_spin = {
+      coins: Math.max(merged.user.roulette_last_spin?.coins || 0, cloud.user.roulette_last_spin.coins || 0),
+      avatars: Math.max(merged.user.roulette_last_spin?.avatars || 0, cloud.user.roulette_last_spin.avatars || 0),
+      titles: Math.max(merged.user.roulette_last_spin?.titles || 0, cloud.user.roulette_last_spin.titles || 0),
+    };
+  }
+
+  // 7. Diagnósticos
+  if (cloud.diagnostics) {
+    merged.diagnostics = {
+      pretest_score: cloud.diagnostics.pretest_score ?? merged.diagnostics?.pretest_score ?? 0,
+      posttest_score: cloud.diagnostics.posttest_score ?? merged.diagnostics?.posttest_score ?? null,
+    };
+  }
 
   // 4. Módulos y Niveles: conservar el mejor intento en cada nivel
   const allModKeys = new Set([...Object.keys(merged.modules || {}), ...Object.keys(cloud.modules || {})]);

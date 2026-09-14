@@ -2073,16 +2073,101 @@ body.is-landscape #rotate-screen {
   overflow-x: hidden;
 }
 
+.modal-box--welcome {
+  max-width: 440px;
+  width: min(440px, 94vw);
+  max-height: min(92vh, 580px);
+  padding: 1.5rem 1rem 0.8rem;
+}
+.modal-box--welcome .modal-scroll-body {
+  max-height: calc(88vh - 50px);
+  width: 100%;
+}
+
+@media (max-width: 640px) or (max-height: 600px) {
+  .modal-box {
+    max-height: 94vh !important;
+    padding: 1.2rem 0.65rem 0.65rem !important;
+    width: min(96vw, 440px) !important;
+  }
+  .modal-box--welcome {
+    max-height: 92vh !important;
+    padding: 1.2rem 0.65rem 0.5rem !important;
+    width: min(96vw, 420px) !important;
+  }
+  .modal-box--welcome .modal-scroll-body {
+    max-height: calc(90vh - 45px) !important;
+    padding: 0.1rem 0.2rem !important;
+  }
+}
+
 @keyframes brawlPopIn {
   from { transform:scale(0.6) translateY(20px); opacity:0; }
   to   { transform:scale(1) translateY(0); opacity:1; }
 }
 
-.modal-scroll-body {
-  overflow-y:auto;
-  max-height:calc(85vh - 60px);
-  display:flex; flex-direction:column;
-  padding:0.2rem 0.2rem;
+/* Contenedores con scroll en modales: Barra de desplazamiento SIEMPRE visible */
+.modal-scroll-body,
+.tasks-modal-list,
+.ach-modal-list,
+.briefing-powers-list,
+.settings-modal-body,
+.prof-dialog-body {
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  max-height: calc(85vh - 60px);
+  display: flex;
+  flex-direction: column;
+  padding: 0.2rem 0.35rem 0.2rem 0.2rem;
+  scrollbar-width: thin !important;
+  scrollbar-color: #0284C7 #E2E8F0 !important;
+  scrollbar-gutter: stable;
+  -webkit-overflow-scrolling: touch !important;
+}
+
+/* WebKit (Chrome, Safari, Edge, Android WebViews): Barra clara y perceptible */
+.modal-scroll-body::-webkit-scrollbar,
+.tasks-modal-list::-webkit-scrollbar,
+.ach-modal-list::-webkit-scrollbar,
+.briefing-powers-list::-webkit-scrollbar,
+.settings-modal-body::-webkit-scrollbar,
+.prof-dialog-body::-webkit-scrollbar,
+.modal-box::-webkit-scrollbar {
+  width: 8px !important;
+  height: 8px !important;
+  display: block !important;
+  -webkit-appearance: none !important;
+}
+
+.modal-scroll-body::-webkit-scrollbar-track,
+.tasks-modal-list::-webkit-scrollbar-track,
+.ach-modal-list::-webkit-scrollbar-track,
+.briefing-powers-list::-webkit-scrollbar-track,
+.settings-modal-body::-webkit-scrollbar-track,
+.prof-dialog-body::-webkit-scrollbar-track,
+.modal-box::-webkit-scrollbar-track {
+  background: #E2E8F0 !important;
+  border-radius: 8px !important;
+  border: 1px solid #CBD5E1 !important;
+}
+
+.modal-scroll-body::-webkit-scrollbar-thumb,
+.tasks-modal-list::-webkit-scrollbar-thumb,
+.ach-modal-list::-webkit-scrollbar-thumb,
+.briefing-powers-list::-webkit-scrollbar-thumb,
+.settings-modal-body::-webkit-scrollbar-thumb,
+.prof-dialog-body::-webkit-scrollbar-thumb,
+.modal-box::-webkit-scrollbar-thumb {
+  background: #0284C7 !important;
+  border-radius: 8px !important;
+  border: 1.5px solid #E2E8F0 !important;
+  min-height: 28px !important;
+}
+
+.modal-scroll-body::-webkit-scrollbar-thumb:hover,
+.tasks-modal-list::-webkit-scrollbar-thumb:hover,
+.ach-modal-list::-webkit-scrollbar-thumb:hover {
+  background: #0369A1 !important;
 }
 
 /* Ribbon 3D plano */
@@ -4710,8 +4795,7 @@ body.is-landscape #rotate-screen {
   transform: translateY(2px);
 }
 .btn-round-brawl--connected {
-  border-color: #22C55E !important;
-  box-shadow: 0 3px 0 #0369A1, 0 0 10px rgba(34, 197, 94, 0.45) !important;
+  position: relative;
 }
 
 .hud-cloud-icon {
@@ -4722,15 +4806,16 @@ body.is-landscape #rotate-screen {
 
 .hud-cloud-dot {
   position: absolute;
-  top: -1px;
-  right: -1px;
-  width: 9px;
-  height: 9px;
+  top: -2px;
+  right: -2px;
+  width: 10px;
+  height: 10px;
   border-radius: 50%;
-  background: #22C55E;
-  border: 1.8px solid #FFFFFF;
-  box-shadow: 0 0 6px #22C55E;
-  animation: pulseDot 2s infinite ease-in-out;
+  background: #EF4444 !important;
+  border: 2px solid #FFFFFF !important;
+  box-shadow: 0 0 6px rgba(239, 68, 68, 0.9) !important;
+  animation: pulseDot 1.8s infinite ease-in-out;
+  pointer-events: none;
 }
 
 @keyframes pulseDot {

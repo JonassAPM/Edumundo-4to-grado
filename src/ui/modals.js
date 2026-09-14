@@ -1186,28 +1186,30 @@ export function showFreeModeBriefingModal({ avatar, onStart, onCancel }) {
         <span>${ribbonText}</span>
       </div>
 
-      <div class="briefing-avatar-preview">
-        ${avatarDisplayHtml}
-      </div>
+      <div class="modal-scroll-body" style="align-items:center;text-align:center">
+        <div class="briefing-avatar-preview">
+          ${avatarDisplayHtml}
+        </div>
 
-      <h3 style="font-size:clamp(15px, 2vw, 19px);font-weight:900;color:#0F172A;margin:.2rem 0">
-        ${title}
-      </h3>
-      <p style="font-size:clamp(10.5px, 1.3vw, 12.5px);font-weight:700;color:#64748B;margin:0 0 .5rem;line-height:1.35">
-        ${subtitle}
-      </p>
+        <h3 style="font-size:clamp(15px, 2vw, 19px);font-weight:900;color:#0F172A;margin:.2rem 0">
+          ${title}
+        </h3>
+        <p style="font-size:clamp(10.5px, 1.3vw, 12.5px);font-weight:700;color:#64748B;margin:0 0 .5rem;line-height:1.35">
+          ${subtitle}
+        </p>
 
-      <div class="briefing-powers-list">
-        ${powersHtml}
-      </div>
+        <div class="briefing-powers-list">
+          ${powersHtml}
+        </div>
 
-      <div style="display:flex;gap:.6rem;width:100%;margin-top:.7rem">
-        <button class="btn btn-gray btn-md" id="fm-briefing-cancel-btn" style="flex:0.35">
-          ◀ Volver
-        </button>
-        <button class="btn btn-green btn-md" id="fm-briefing-start-btn" style="flex:1">
-          ¡COMENZAR DESAFÍO! ⚡
-        </button>
+        <div style="display:flex;gap:.6rem;width:100%;margin-top:.7rem">
+          <button class="btn btn-gray btn-md" id="fm-briefing-cancel-btn" style="flex:0.35">
+            ◀ Volver
+          </button>
+          <button class="btn btn-green btn-md" id="fm-briefing-start-btn" style="flex:1">
+            ¡COMENZAR DESAFÍO! ⚡
+          </button>
+        </div>
       </div>
     </div>
   `;
@@ -1233,13 +1235,13 @@ export function showFreeModeBriefingModal({ avatar, onStart, onCancel }) {
 // 12. MODAL DE GESTIÓN Y SINCRONIZACIÓN EN LA NUBE (FIREBASE)
 // ═══════════════════════════════════════════════════════════════════════════════
 
-export function showCloudModal({ save, onSaveUpdate, onLogout, onClose }) {
+export function showCloudModal({ save, getSave, onSaveUpdate, onLogout, onClose }) {
   playPop();
   const overlay = _createOverlay('modal-backdrop--cloud');
   const user = save.user || {};
   const isConnected = Boolean(user.student_id);
 
-  const _renderModalContent = (activeTab = 'login') => {
+  const _renderModalContent = (activeTab = 'register') => {
     if (!isConnected) {
       return `
         <div class="modal-box modal-box--cloud" role="dialog" aria-modal="true">
@@ -1248,17 +1250,40 @@ export function showCloudModal({ save, onSaveUpdate, onLogout, onClose }) {
           </div>
 
           <div class="modal-scroll-body">
-            <p style="font-size:clamp(11px,1.3vw,13px);color:#475569;font-weight:700;text-align:center;margin-bottom:.6rem;line-height:1.3">
-              Guarda tus estrellas, monedas y niveles en la nube para jugar desde cualquier computador sin perder nada.
+            <p style="font-size:clamp(11px,1.3vw,13px);color:#475569;font-weight:700;text-align:center;margin-bottom:.6rem">
+              ¡Guarda tu partida en la nube para no perder tu progreso!
             </p>
 
             <div class="cloud-tabs-nav">
-              <button class="cloud-tab-btn ${activeTab === 'login' ? 'cloud-tab-btn--active' : ''}" id="cm-tab-login">
-                🔑 Ya tengo cuenta
-              </button>
               <button class="cloud-tab-btn ${activeTab === 'register' ? 'cloud-tab-btn--active' : ''}" id="cm-tab-reg">
                 🌟 Crear cuenta
               </button>
+              <button class="cloud-tab-btn ${activeTab === 'login' ? 'cloud-tab-btn--active' : ''}" id="cm-tab-login">
+                🔑 Ya tengo cuenta
+              </button>
+            </div>
+
+            <!-- Panel Crear Cuenta (por defecto) -->
+            <div class="cloud-tab-panel" id="cm-panel-reg" style="display:${activeTab === 'register' ? 'block' : 'none'}">
+              <div class="cloud-input-group">
+                <label for="cm-reg-name" class="cloud-label">Primer Nombre y Primer Apellido:</label>
+                <input id="cm-reg-name" class="prof-alias-input" type="text" maxlength="30"
+                       placeholder="Ej: Juan Pérez" value="${user.alias !== 'Estudiante' ? user.alias : ''}" style="width:100%;text-align:center" />
+              </div>
+
+              <div class="cloud-input-group" style="margin-top:.45rem">
+                <label for="cm-reg-id" class="cloud-label">Tarjeta de Identidad / Cédula:</label>
+                <input id="cm-reg-id" class="prof-alias-input" type="text" inputmode="numeric"
+                       placeholder="Solo números (ej: 1098765432)" style="width:100%;text-align:center" />
+              </div>
+
+              <div id="cm-reg-err" class="cloud-err-msg" style="display:none"></div>
+
+              <div class="modal-actions modal-actions--stacked" style="width:100%;margin-top:.6rem">
+                <button class="btn btn-orange btn-md" id="cm-btn-do-reg" style="width:100%">
+                  🚀 ¡CREAR CUENTA Y RESPALDAR!
+                </button>
+              </div>
             </div>
 
             <!-- Panel Iniciar Sesión -->
@@ -1267,7 +1292,6 @@ export function showCloudModal({ save, onSaveUpdate, onLogout, onClose }) {
                 <label for="cm-login-id" class="cloud-label">Tarjeta de Identidad / Cédula:</label>
                 <input id="cm-login-id" class="prof-alias-input" type="text" inputmode="numeric"
                        placeholder="Ingresa tu documento (ej: 1098765432)" style="width:100%;text-align:center" />
-                <span class="cloud-hint">Tu tarjeta de identidad es tu llave para entrar siempre.</span>
               </div>
 
               <div id="cm-login-err" class="cloud-err-msg" style="display:none"></div>
@@ -1275,31 +1299,6 @@ export function showCloudModal({ save, onSaveUpdate, onLogout, onClose }) {
               <div class="modal-actions modal-actions--stacked" style="width:100%;margin-top:.6rem">
                 <button class="btn btn-green btn-md" id="cm-btn-do-login" style="width:100%">
                   📥 ¡ENTRAR Y CARGAR MI AVANCE!
-                </button>
-              </div>
-            </div>
-
-            <!-- Panel Crear Cuenta -->
-            <div class="cloud-tab-panel" id="cm-panel-reg" style="display:${activeTab === 'register' ? 'block' : 'none'}">
-              <div class="cloud-input-group">
-                <label for="cm-reg-name" class="cloud-label">Primer Nombre y Primer Apellido:</label>
-                <input id="cm-reg-name" class="prof-alias-input" type="text" maxlength="30"
-                       placeholder="Ej: Juan Pérez" value="${user.alias !== 'Estudiante' ? user.alias : ''}" style="width:100%;text-align:center" />
-                <span class="cloud-hint">Este será tu apodo dentro del juego.</span>
-              </div>
-
-              <div class="cloud-input-group" style="margin-top:.4rem">
-                <label for="cm-reg-id" class="cloud-label">Tarjeta de Identidad / Cédula:</label>
-                <input id="cm-reg-id" class="prof-alias-input" type="text" inputmode="numeric"
-                       placeholder="Solo números (ej: 1098765432)" style="width:100%;text-align:center" />
-                <span class="cloud-hint">Única para ti, no importa si otro estudiante tiene tu mismo nombre.</span>
-              </div>
-
-              <div id="cm-reg-err" class="cloud-err-msg" style="display:none"></div>
-
-              <div class="modal-actions modal-actions--stacked" style="width:100%;margin-top:.6rem">
-                <button class="btn btn-orange btn-md" id="cm-btn-do-reg" style="width:100%">
-                  🚀 ¡CREAR CUENTA Y RESPALDAR!
                 </button>
               </div>
             </div>
@@ -1357,7 +1356,6 @@ export function showCloudModal({ save, onSaveUpdate, onLogout, onClose }) {
               <span style="font-size:18px">☁️⬆️</span>
               <div style="text-align:left">
                 <strong>Subir Progreso a la Nube</strong>
-                <small style="display:block;opacity:.85;font-size:10px">Guarda tus monedas y estrellas actuales</small>
               </div>
             </button>
 
@@ -1365,15 +1363,13 @@ export function showCloudModal({ save, onSaveUpdate, onLogout, onClose }) {
               <span style="font-size:18px">☁️⬇️</span>
               <div style="text-align:left">
                 <strong>Descargar Progreso de la Nube</strong>
-                <small style="display:block;opacity:.85;font-size:10px">Restaura tu partida si formateaste el equipo</small>
               </div>
             </button>
 
             <button class="btn btn-gold btn-sm cloud-action-btn" id="cm-btn-smart-merge" style="margin-top:.2rem">
               <span style="font-size:16px">🔀</span>
               <div style="text-align:left">
-                <strong>Fusión Inteligente (Conservar Todo)</strong>
-                <small style="display:block;opacity:.85;font-size:9.5px">Combina lo mejor de este equipo y de la nube</small>
+                <strong>Fusión Inteligente</strong>
               </div>
             </button>
           </div>
@@ -1535,12 +1531,13 @@ export function showCloudModal({ save, onSaveUpdate, onLogout, onClose }) {
         msg.style.color = '#0284C7';
       }
 
-      const res = await saveProgressToCloud(save);
+      const currentSave = getSave ? getSave() : save;
+      const res = await saveProgressToCloud(currentSave);
       if (btn) btn.disabled = false;
 
       if (res.ok) {
-        save.user.cloud_synced = true;
-        if (onSaveUpdate) onSaveUpdate(save);
+        currentSave.user.cloud_synced = true;
+        if (onSaveUpdate) onSaveUpdate(currentSave);
         playVictory();
         if (msg) {
           msg.textContent = '✅ ¡Tu progreso se guardó en la nube exitosamente!';
@@ -1648,6 +1645,12 @@ export function showCloudModal({ save, onSaveUpdate, onLogout, onClose }) {
         confirmText: 'Sí, Salir de la Cuenta',
         cancelText: 'Continuar Jugando',
         onConfirm: async () => {
+          const currentSave = getSave ? getSave() : save;
+          if (currentSave.user?.student_id) {
+            try {
+              await saveProgressToCloud(currentSave);
+            } catch (_) {}
+          }
           await logoutStudent();
           overlay._cleanup();
           if (onLogout) onLogout();
@@ -1663,7 +1666,7 @@ export function showCloudModal({ save, onSaveUpdate, onLogout, onClose }) {
     });
   };
 
-  overlay.innerHTML = _renderModalContent('login');
+  overlay.innerHTML = _renderModalContent('register');
   document.body.appendChild(overlay);
   _bindEvents();
 
