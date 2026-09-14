@@ -4,7 +4,7 @@
  * Pantalla Completa Permanente · CERO Alertas de Navegador · Anti-Farming de Monedas
  */
 
-import { loadSave, saveSave } from './core/storage.js';
+import { loadSave, saveSave, resetSave } from './core/storage.js';
 import { initState, transition, getCurrentState, getSaveData, setSaveData } from './core/state.js';
 import {
   playPop,
@@ -39,7 +39,17 @@ import {
   showConfirmModal,
   showToast,
   showFreeModeBriefingModal,
+  showCloudModal,
 } from './ui/modals.js';
+import {
+  cleanStudentId,
+  loginStudent,
+  registerStudent,
+  logoutStudent,
+  saveProgressToCloud,
+  fetchProgressFromCloud,
+  smartMergeSave,
+} from './core/firebase.js';
 import { getClaimableTasksCount } from './data/tasks_data.js';
 import { getDidacticGuide, shouldAutoShowGuide } from './data/didactic_guides.js';
 import { STORE_ITEMS, RARITIES, getAvatarRarity, getTitleRarity } from './data/store_items.js';
@@ -401,6 +411,10 @@ function _renderHud({ title = '', sub = '', showBack = false, backTarget = 'LOBB
           <span class="currency-amount" id="hud-gems-txt">${save.user.gems ?? 10}</span>
         </div>
       </div>
+      <button class="btn-round-brawl btn-round-brawl--blue ${save.user?.student_id ? 'btn-round-brawl--connected' : ''}" id="hud-btn-cloud" title="${save.user?.student_id ? 'Nube Conectada (Doc: ' + save.user.student_id + ')' : 'Sincronizar en la Nube'}">
+        <span class="hud-cloud-icon">☁️</span>
+        ${save.user?.student_id ? '<span class="hud-cloud-dot"></span>' : ''}
+      </button>
       <button class="btn-round-brawl btn-round-brawl--fullscreen btn-fullscreen-toggle" title="${isFull ? 'Salir de pantalla completa' : 'Pantalla completa'}">
         ${_getFullscreenSvg(isFull)}
       </button>
@@ -423,36 +437,83 @@ function _tplWelcome() {
   <div class="bg-cloud-bottom"></div>
 
   <div style="flex:1;display:flex;align-items:center;justify-content:center;padding:1rem;position:relative;z-index:10">
-    <div class="modal-box" style="max-width:440px;text-align:center;align-items:center">
+    <div class="modal-box modal-box--welcome" style="max-width:440px;text-align:center;align-items:center">
       <div class="modal-ribbon modal-ribbon--victory">
-        <span>🎒 ¡BIENVENIDO AVENTURERO!</span>
+        <span>🎒 ¡BIENVENIDO A EDUAVENTURA!</span>
       </div>
 
-      <div style="font-size:clamp(44px,6.5vw,68px);margin:1.1rem 0 .2rem;animation:dioramaFloat 3s ease-in-out infinite">
+      <div style="font-size:clamp(38px,5vw,54px);margin:.7rem 0 .1rem;animation:dioramaFloat 3s ease-in-out infinite">
         ${currentAvatar}
       </div>
 
-      <h1 style="font-size:clamp(18px,2.8vw,26px);font-weight:900;color:#0F172A;line-height:1.2">
+      <h1 style="font-size:clamp(17px,2.5vw,23px);font-weight:900;color:#0F172A;line-height:1.2">
         EduAventura G4
       </h1>
-      <p style="font-size:clamp(11px,1.4vw,14px);color:#0284C7;font-weight:800;margin-bottom:.6rem">
+      <p style="font-size:clamp(10.5px,1.3vw,13px);color:#0284C7;font-weight:800;margin-bottom:.5rem">
         Aventuras Matemáticas · 4.° Grado Primaria
       </p>
 
-      <div style="width:100%;text-align:left;margin-bottom:.5rem">
-        <label for="wc-inp" style="font-size:11px;font-weight:900;color:#64748B">¿Cómo te llamas?</label>
-        <input id="wc-inp" class="prof-alias-input" style="width:100%;margin-top:.2rem;text-align:center"
-               type="text" maxlength="20" placeholder="Escribe tu nombre o apodo..." value="${_esc(alias)}" />
-      </div>
-
-      <div class="modal-actions modal-actions--stacked" style="width:100%">
-        <button id="wc-go" class="btn btn-green btn-lg">
-          🚀 ¡ENTRAR AL JUEGO!
+      <!-- Pestañas: Iniciar Sesión / Crear Cuenta -->
+      <div class="cloud-tabs-nav" style="width:100%;margin-bottom:.5rem">
+        <button class="cloud-tab-btn cloud-tab-btn--active" id="wc-tab-login">
+          🔑 Ya tengo cuenta
+        </button>
+        <button class="cloud-tab-btn" id="wc-tab-reg">
+          🌟 Crear cuenta
         </button>
       </div>
 
-      <div style="font-size:clamp(9px,1.1vw,12px);color:#94A3B8;margin-top:.6rem;font-weight:600">
-        I.E. Técnico Industrial Laureano Gómez Castro · 100% Offline
+      <!-- Panel: Iniciar Sesión -->
+      <div class="cloud-tab-panel" id="wc-panel-login" style="width:100%">
+        <div class="cloud-input-group">
+          <label for="wc-login-id" class="cloud-label">Tarjeta de Identidad / Cédula:</label>
+          <input id="wc-login-id" class="prof-alias-input" type="text" inputmode="numeric"
+                 placeholder="Ingresa tu documento (ej: 1098765432)" style="width:100%;text-align:center" />
+          <span class="cloud-hint">Tu documento es tu llave para entrar y recuperar tu partida.</span>
+        </div>
+
+        <div id="wc-login-err" class="cloud-err-msg" style="display:none"></div>
+
+        <div class="modal-actions modal-actions--stacked" style="width:100%;margin-top:.5rem">
+          <button id="wc-btn-login" class="btn btn-green btn-lg" style="width:100%">
+            📥 ¡ENTRAR Y CARGAR MI AVANCE!
+          </button>
+        </div>
+      </div>
+
+      <!-- Panel: Crear Cuenta -->
+      <div class="cloud-tab-panel" id="wc-panel-reg" style="width:100%;display:none">
+        <div class="cloud-input-group">
+          <label for="wc-reg-name" class="cloud-label">Primer Nombre y Primer Apellido:</label>
+          <input id="wc-reg-name" class="prof-alias-input" type="text" maxlength="30"
+                 placeholder="Ej: Juan Pérez" value="${_esc(alias)}" style="width:100%;text-align:center" />
+          <span class="cloud-hint">Tu apodo de aventurero dentro del juego.</span>
+        </div>
+
+        <div class="cloud-input-group" style="margin-top:.35rem">
+          <label for="wc-reg-id" class="cloud-label">Tarjeta de Identidad / Cédula:</label>
+          <input id="wc-reg-id" class="prof-alias-input" type="text" inputmode="numeric"
+                 placeholder="Solo números (ej: 1098765432)" style="width:100%;text-align:center" />
+          <span class="cloud-hint">Única para ti, así no se confunde con otros estudiantes.</span>
+        </div>
+
+        <div id="wc-reg-err" class="cloud-err-msg" style="display:none"></div>
+
+        <div class="modal-actions modal-actions--stacked" style="width:100%;margin-top:.5rem">
+          <button id="wc-btn-reg" class="btn btn-orange btn-lg" style="width:100%">
+            🚀 ¡CREAR CUENTA Y JUGAR!
+          </button>
+        </div>
+      </div>
+
+      <div style="margin-top:.55rem">
+        <button id="wc-btn-guest" class="btn-guest-link">
+          🕹️ Entrar sin cuenta (Modo Invitado Offline)
+        </button>
+      </div>
+
+      <div style="font-size:clamp(8.5px,1.1vw,11px);color:#94A3B8;margin-top:.5rem;font-weight:600">
+        I.E. Técnico Industrial Laureano Gómez Castro · Sincronización en la Nube
       </div>
     </div>
   </div>
@@ -520,6 +581,9 @@ function _tplLobby() {
           ${claimableTasksCount > 0 ? `<span class="task-notif-badge" id="lobby-tasks-badge">${claimableTasksCount}</span>` : ''}
         </button>
       </div>
+      <button class="btn btn-cyan btn-sm" id="lobby-btn-cloud" title="Guardar o Cargar en la Nube">
+        ☁️ Nube ${save.user?.student_id ? '🟢' : ''}
+      </button>
       <div class="lobby-profile-stars-row">
         <button class="btn btn-gold btn-sm" id="lobby-btn-profile" title="Ver perfil de aventurero">
           👤 Mi Perfil
@@ -2629,23 +2693,164 @@ function _bind(state, scr, ctx) {
     _persist(save);
     _syncHudAudioButtons();
   });
+  $('#hud-btn-cloud')?.addEventListener('click', () => {
+    playClick();
+    _openCloudDialog();
+  });
   $('#hud-btn-settings')?.addEventListener('click', () => {
     playClick();
     _openSettingsDialog();
   });
 
   switch (state) {
-    /* ─── WELCOME ────────────────────────────────────────────────────────── */
+    /* ─── WELCOME (LOGIN / REGISTRO / INVITADO) ───────────────────────────── */
     case 'WELCOME': {
-      const inp = $('#wc-inp');
-      inp?.focus();
+      const tabLogin = $('#wc-tab-login');
+      const tabReg = $('#wc-tab-reg');
+      const panelLogin = $('#wc-panel-login');
+      const panelReg = $('#wc-panel-reg');
 
-      $('#wc-go')?.addEventListener('click', () => go(() => {
+      tabLogin?.addEventListener('click', () => {
+        playClick();
+        tabLogin.classList.add('cloud-tab-btn--active');
+        tabReg?.classList.remove('cloud-tab-btn--active');
+        if (panelLogin) panelLogin.style.display = 'block';
+        if (panelReg) panelReg.style.display = 'none';
+        $('#wc-login-id')?.focus();
+      });
+
+      tabReg?.addEventListener('click', () => {
+        playClick();
+        tabReg.classList.add('cloud-tab-btn--active');
+        tabLogin?.classList.remove('cloud-tab-btn--active');
+        if (panelLogin) panelLogin.style.display = 'none';
+        if (panelReg) panelReg.style.display = 'block';
+        $('#wc-reg-name')?.focus();
+      });
+
+      // Iniciar Sesión con Tarjeta de Identidad
+      $('#wc-btn-login')?.addEventListener('click', async () => {
+        playPop();
+        const idInp = $('#wc-login-id');
+        const errEl = $('#wc-login-err');
+        const btn = $('#wc-btn-login');
+        const studentId = cleanStudentId(idInp?.value);
+
+        if (!studentId || studentId.length < 4) {
+          if (errEl) {
+            errEl.textContent = 'Ingresa tu documento de identidad (mínimo 4 números).';
+            errEl.style.display = 'block';
+          }
+          return;
+        }
+
+        if (btn) {
+          btn.disabled = true;
+          btn.textContent = '⏳ Conectando...';
+        }
+        if (errEl) errEl.style.display = 'none';
+
+        const res = await loginStudent(studentId);
+        if (!res.ok) {
+          if (btn) {
+            btn.disabled = false;
+            btn.textContent = '📥 ¡ENTRAR Y CARGAR MI AVANCE!';
+          }
+          if (errEl) {
+            errEl.textContent = res.error || 'Error al iniciar sesión.';
+            errEl.style.display = 'block';
+          }
+          return;
+        }
+
+        // Descargar partida de Firestore
+        const cloudRes = await fetchProgressFromCloud();
+        let save = _s();
+        if (cloudRes.ok && cloudRes.data) {
+          save = smartMergeSave(save, cloudRes.data);
+        } else {
+          // Primera sincronización
+          await saveProgressToCloud(save);
+        }
+
+        save.user.student_id = studentId;
+        save.user.alias = res.user.displayName || save.user.alias;
+        save.user.cloud_synced = true;
+        save.diagnostics.pretest_score = 0;
+        _persist(save);
+
+        startBGM();
+        playVictory();
+        showToast(`¡Bienvenido de nuevo, ${save.user.alias}! 🎒☁️`, 'ok', '👋');
+        transition('LOBBY');
+      });
+
+      // Crear Cuenta con Nombre y Tarjeta de Identidad
+      $('#wc-btn-reg')?.addEventListener('click', async () => {
+        playPop();
+        const nameInp = $('#wc-reg-name');
+        const idInp = $('#wc-reg-id');
+        const errEl = $('#wc-reg-err');
+        const btn = $('#wc-btn-reg');
+
+        const fullName = (nameInp?.value || '').trim();
+        const studentId = cleanStudentId(idInp?.value);
+
+        if (!fullName || fullName.length < 2) {
+          if (errEl) {
+            errEl.textContent = 'Por favor escribe tu primer nombre y primer apellido.';
+            errEl.style.display = 'block';
+          }
+          return;
+        }
+
+        if (!studentId || studentId.length < 4) {
+          if (errEl) {
+            errEl.textContent = 'Ingresa tu documento de identidad (mínimo 4 números).';
+            errEl.style.display = 'block';
+          }
+          return;
+        }
+
+        if (btn) {
+          btn.disabled = true;
+          btn.textContent = '⏳ Creando cuenta...';
+        }
+        if (errEl) errEl.style.display = 'none';
+
+        const res = await registerStudent(studentId, fullName);
+        if (!res.ok) {
+          if (btn) {
+            btn.disabled = false;
+            btn.textContent = '🚀 ¡CREAR CUENTA Y JUGAR!';
+          }
+          if (errEl) {
+            errEl.textContent = res.error || 'No se pudo crear la cuenta.';
+            errEl.style.display = 'block';
+          }
+          return;
+        }
+
+        const save = _s();
+        save.user.student_id = studentId;
+        save.user.alias = fullName;
+        save.user.cloud_synced = true;
+        save.diagnostics.pretest_score = 0;
+        await saveProgressToCloud(save);
+        _persist(save);
+
+        startBGM();
+        playVictory();
+        showToast('¡Cuenta creada y partida en la nube! 🎉', 'ok', '🚀');
+        transition('LOBBY');
+      });
+
+      // Continuar como Invitado Offline (sin red)
+      $('#wc-btn-guest')?.addEventListener('click', () => go(() => {
         playPop();
         startBGM();
-        const alias = (inp?.value.trim() || 'Estudiante').replace(/[^a-zA-ZÁÉÍÓÚáéíóúÑñ0-9 ]/g, '').slice(0, 20) || 'Estudiante';
         const save = _s();
-        save.user.alias = alias;
+        save.user.alias = save.user.alias !== 'Estudiante' ? save.user.alias : 'Aventurero';
         save.diagnostics.pretest_score = 0;
         _persist(save);
         transition('LOBBY');
@@ -2673,6 +2878,11 @@ function _bind(state, scr, ctx) {
 
       $('#lobby-btn-tasks')?.addEventListener('click', () => {
         _openTasksDialog();
+      });
+
+      $('#lobby-btn-cloud')?.addEventListener('click', () => {
+        playClick();
+        _openCloudDialog();
       });
 
       $('#lobby-btn-profile')?.addEventListener('click', () => {
@@ -3844,6 +4054,27 @@ function _openProfileDialog() {
       save.user.avatar = avatar;
       _persist(save);
       transition('LOBBY');
+    },
+    onOpenCloud: () => {
+      _openCloudDialog();
+    },
+  });
+}
+
+function _openCloudDialog() {
+  playPop();
+  showCloudModal({
+    save: _s(),
+    onSaveUpdate: (updatedSave) => {
+      _persist(updatedSave);
+      transition(getCurrentState() || 'LOBBY');
+    },
+    onLogout: async () => {
+      await logoutStudent();
+      const fresh = resetSave();
+      fresh.diagnostics.pretest_score = null;
+      _persist(fresh);
+      transition('WELCOME');
     },
   });
 }

@@ -4692,3 +4692,341 @@ body.is-landscape #rotate-screen {
   width: min(500px, 98%);
 }
 
+/* ═══════════════════════════════════════════════════════════════════════════════
+   7. SISTEMA DE NUBE Y CUENTAS DE ESTUDIANTES (FIREBASE)
+   ═══════════════════════════════════════════════════════════════════════════════ */
+
+/* Botón de Nube en el HUD */
+.btn-round-brawl--blue {
+  background: #0284C7;
+  box-shadow: 0 3px 0 #0369A1;
+  position: relative;
+}
+.btn-round-brawl--blue:hover {
+  filter: brightness(1.1);
+}
+.btn-round-brawl--blue:active {
+  box-shadow: 0 1px 0 #0369A1;
+  transform: translateY(2px);
+}
+.btn-round-brawl--connected {
+  border-color: #22C55E !important;
+  box-shadow: 0 3px 0 #0369A1, 0 0 10px rgba(34, 197, 94, 0.45) !important;
+}
+
+.hud-cloud-icon {
+  display: inline-block;
+  font-size: clamp(14px, 1.8vw, 18px);
+  line-height: 1;
+}
+
+.hud-cloud-dot {
+  position: absolute;
+  top: -1px;
+  right: -1px;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #22C55E;
+  border: 1.8px solid #FFFFFF;
+  box-shadow: 0 0 6px #22C55E;
+  animation: pulseDot 2s infinite ease-in-out;
+}
+
+@keyframes pulseDot {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.25); opacity: 0.85; }
+}
+
+/* Modal de Nube */
+.modal-box--cloud {
+  max-width: 480px;
+  width: 92%;
+  border-color: #0284C7;
+}
+
+.modal-ribbon--cloud {
+  background: linear-gradient(135deg, #0284C7 0%, #0EA5E9 100%);
+  border-color: #0369A1;
+  box-shadow: 0 4px 0 #075985;
+}
+
+/* Pestañas de Navegación */
+.cloud-tabs-nav {
+  display: flex;
+  gap: .4rem;
+  background: #F1F5F9;
+  padding: 4px;
+  border-radius: var(--r-md);
+  border: 2px solid #CBD5E1;
+}
+
+.cloud-tab-btn {
+  flex: 1;
+  padding: .45rem .6rem;
+  border: none;
+  border-radius: var(--r-sm);
+  background: transparent;
+  font-family: inherit;
+  font-size: clamp(11px, 1.3vw, 13px);
+  font-weight: 900;
+  color: #64748B;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.cloud-tab-btn:hover {
+  color: #0F172A;
+}
+
+.cloud-tab-btn--active {
+  background: #FFFFFF;
+  color: #0284C7;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08), 0 2px 0 #CBD5E1;
+}
+
+.cloud-tab-panel {
+  margin-top: .6rem;
+}
+
+/* Grupos de Entradas de Texto */
+.cloud-input-group {
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: .2rem;
+}
+
+.cloud-label {
+  font-size: clamp(10px, 1.2vw, 12px);
+  font-weight: 900;
+  color: #475569;
+}
+
+.cloud-hint {
+  font-size: clamp(9px, 1.1vw, 11px);
+  font-weight: 600;
+  color: #94A3B8;
+  margin-top: 1px;
+}
+
+.cloud-err-msg {
+  margin-top: .45rem;
+  padding: .4rem .6rem;
+  background: #FEE2E2;
+  border: 1.5px solid #FCA5A5;
+  border-radius: var(--r-sm);
+  color: #DC2626;
+  font-size: clamp(10px, 1.2vw, 12px);
+  font-weight: 800;
+  text-align: center;
+  animation: brawlPopIn 0.2s ease;
+}
+
+.cloud-status-msg {
+  margin-top: .5rem;
+  padding: .4rem .6rem;
+  background: #F8FAFC;
+  border: 1.5px solid #E2E8F0;
+  border-radius: var(--r-sm);
+  font-size: clamp(10px, 1.2vw, 12px);
+  font-weight: 800;
+  text-align: center;
+  animation: brawlPopIn 0.2s ease;
+}
+
+/* Tarjeta del Usuario en la Nube */
+.cloud-user-header {
+  display: flex;
+  align-items: center;
+  gap: .8rem;
+  padding: .6rem .8rem;
+  background: #F0F9FF;
+  border: 2px solid #BAE6FD;
+  border-radius: var(--r-md);
+  margin-bottom: .6rem;
+  text-align: left;
+}
+
+.cloud-user-avatar {
+  font-size: clamp(30px, 4vw, 42px);
+  line-height: 1;
+}
+
+.cloud-user-meta {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.cloud-user-name {
+  font-size: clamp(14px, 1.8vw, 17px);
+  font-weight: 900;
+  color: #0F172A;
+  margin: 0;
+  line-height: 1.2;
+}
+
+.cloud-user-id-badge {
+  font-size: clamp(10px, 1.2vw, 12px);
+  font-weight: 800;
+  color: #0369A1;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.cloud-badge-connected {
+  font-size: clamp(9px, 1.1vw, 11px);
+  font-weight: 800;
+  color: #15803D;
+  display: inline-block;
+  margin-top: 2px;
+}
+
+/* Grid de Estadísticas */
+.cloud-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: .4rem;
+  margin-bottom: .6rem;
+}
+
+.cloud-stat-card {
+  background: #F8FAFC;
+  border: 2px solid #E2E8F0;
+  border-radius: var(--r-sm);
+  padding: .4rem .2rem;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  box-shadow: 0 2px 0 #CBD5E1;
+}
+
+.cloud-stat-icon {
+  font-size: clamp(14px, 1.7vw, 18px);
+}
+
+.cloud-stat-val {
+  font-size: clamp(13px, 1.6vw, 17px);
+  font-weight: 900;
+  color: #0F172A;
+  line-height: 1.1;
+  margin: 2px 0;
+}
+
+.cloud-stat-lbl {
+  font-size: clamp(9px, 1.1vw, 11px);
+  font-weight: 700;
+  color: #64748B;
+  text-transform: uppercase;
+}
+
+/* Caja de Acciones de Nube */
+.cloud-actions-box {
+  display: flex;
+  flex-direction: column;
+  gap: .4rem;
+  width: 100%;
+}
+
+.cloud-action-btn {
+  display: flex !important;
+  align-items: center !important;
+  gap: .6rem !important;
+  justify-content: flex-start !important;
+  width: 100% !important;
+  padding: .55rem .8rem !important;
+}
+
+/* Botón de Modo Invitado en Welcome */
+.btn-guest-link {
+  background: transparent;
+  border: none;
+  color: #64748B;
+  font-family: inherit;
+  font-size: clamp(10px, 1.2vw, 12.5px);
+  font-weight: 800;
+  text-decoration: underline;
+  cursor: pointer;
+  padding: .3rem .5rem;
+  border-radius: var(--r-sm);
+  transition: color 0.15s ease;
+}
+.btn-guest-link:hover {
+  color: #0F172A;
+}
+
+/* Sección de Cuenta dentro del Modal de Perfil */
+.prof-cloud-section {
+  width: 100%;
+  margin: .45rem 0 .2rem;
+}
+
+.prof-cloud-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .6rem;
+  padding: .5rem .7rem;
+  border-radius: var(--r-md);
+  border: 2px solid;
+  text-align: left;
+}
+
+.prof-cloud-card--active {
+  background: #F0FDF4;
+  border-color: #86EFAC;
+  box-shadow: 0 2px 0 #BBF7D0;
+}
+
+.prof-cloud-card--offline {
+  background: #FFFBEB;
+  border-color: #FDE68A;
+  box-shadow: 0 2px 0 #FEF3C7;
+}
+
+.prof-cloud-icon {
+  font-size: clamp(20px, 2.8vw, 26px);
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.prof-cloud-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.prof-cloud-status-line {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: clamp(10.5px, 1.3vw, 13px);
+  color: #0F172A;
+}
+
+.prof-cloud-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #22C55E;
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+.prof-cloud-dot--warn {
+  background: #F59E0B;
+}
+
+.prof-cloud-sub {
+  font-size: clamp(9px, 1.1vw, 11px);
+  font-weight: 600;
+  color: #64748B;
+  line-height: 1.25;
+}
+
+

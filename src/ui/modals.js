@@ -9,6 +9,18 @@
 import { playPop, playClick, playWhoosh, playStar, playCoin, playVictory, playGuide, playUnlock } from '../core/audio.js';
 import { getAvatarRarity } from '../data/store_items.js';
 import { TROPHIES, TASKS, TASK_CLASSES, getOrganizedTasks, getClaimableTasksCount } from '../data/tasks_data.js';
+import {
+  registerStudent,
+  loginStudent,
+  logoutStudent,
+  getCurrentStudent,
+  saveProgressToCloud,
+  fetchProgressFromCloud,
+  updateStudentNickname,
+  smartMergeSave,
+  cleanStudentId,
+  formatAuthError,
+} from '../core/firebase.js';
 
 // ─── Utilidad Base para Modales ───────────────────────────────────────────────
 
@@ -337,7 +349,7 @@ export function showPauseModal({ onResume, onQuit }) {
 // 5. MODAL DE PERFIL DE JUGADOR (Reemplaza alert)
 // ═══════════════════════════════════════════════════════════════════════════════
 
-export function showProfileModal({ user, modules, save, onSaveAlias, onClose }) {
+export function showProfileModal({ user, modules, save, onSaveAlias, onOpenCloud, onClose }) {
   playPop();
   const overlay = _createOverlay();
   const actualSave = save || { user, modules };
@@ -392,10 +404,10 @@ export function showProfileModal({ user, modules, save, onSaveAlias, onClose }) 
           </div>
 
           <div class="prof-info-section">
-            <label class="prof-label" for="prof-inp-alias">Tu Nombre:</label>
+            <label class="prof-label" for="prof-inp-alias">Tu Nombre (Nickname):</label>
             <div style="display:flex;gap:.3rem;align-items:center">
-              <input id="prof-inp-alias" class="prof-alias-input" type="text" maxlength="20" value="${user.alias || 'Estudiante'}" />
-              <button class="btn btn-green btn-sm" id="prof-btn-save-alias">💾 Guardar</button>
+              <input id="prof-inp-alias" class="prof-alias-input" type="text" maxlength="20" value="${user.alias || 'Estudiante'}" placeholder="Tu nombre..." />
+              <button class="btn btn-green btn-sm" id="prof-btn-save-alias" title="Guardar cambios de nombre">💾 Guardar</button>
             </div>
             <div class="prof-rank-badge">${rank}</div>
 
@@ -417,6 +429,39 @@ export function showProfileModal({ user, modules, save, onSaveAlias, onClose }) 
               </div>
             </div>
           </div>
+        </div>
+
+        <!-- Tarjeta de Estado de Cuenta en la Nube -->
+        <div class="prof-cloud-section">
+          ${user.student_id ? `
+            <div class="prof-cloud-card prof-cloud-card--active">
+              <div class="prof-cloud-icon">☁️</div>
+              <div class="prof-cloud-info">
+                <div class="prof-cloud-status-line">
+                  <span class="prof-cloud-dot"></span>
+                  <strong>Tarjeta ID: ${user.student_id}</strong>
+                </div>
+                <div class="prof-cloud-sub">Tu partida se guarda en la nube</div>
+              </div>
+              <button class="btn btn-cyan btn-xs" id="prof-btn-cloud-manage">
+                ☁️ Gestionar Nube
+              </button>
+            </div>
+          ` : `
+            <div class="prof-cloud-card prof-cloud-card--offline">
+              <div class="prof-cloud-icon">☁️</div>
+              <div class="prof-cloud-info">
+                <div class="prof-cloud-status-line">
+                  <span class="prof-cloud-dot prof-cloud-dot--warn"></span>
+                  <strong>Sin cuenta vinculada</strong>
+                </div>
+                <div class="prof-cloud-sub">Vincula tu Tarjeta de Identidad para guardar tu avance y no perderlo si se formatea este equipo.</div>
+              </div>
+              <button class="btn btn-green btn-xs" id="prof-btn-cloud-link">
+                🔗 Vincular Cuenta
+              </button>
+            </div>
+          `}
         </div>
 
         <div class="prof-mods-section">
@@ -453,12 +498,27 @@ export function showProfileModal({ user, modules, save, onSaveAlias, onClose }) 
     });
   });
 
-  overlay.querySelector('#prof-btn-save-alias')?.addEventListener('click', () => {
+  overlay.querySelector('#prof-btn-save-alias')?.addEventListener('click', async () => {
     playPop();
     const val = overlay.querySelector('#prof-inp-alias')?.value.trim() || 'Estudiante';
     user.alias = val;
     if (onSaveAlias) onSaveAlias(val, currentAvatar);
+    if (user.student_id) {
+      updateStudentNickname(val);
+    }
     showToast('¡Nombre guardado con éxito! 👤', 'ok', '💾');
+  });
+
+  overlay.querySelector('#prof-btn-cloud-manage')?.addEventListener('click', () => {
+    playClick();
+    overlay._cleanup();
+    if (onOpenCloud) onOpenCloud();
+  });
+
+  overlay.querySelector('#prof-btn-cloud-link')?.addEventListener('click', () => {
+    playClick();
+    overlay._cleanup();
+    if (onOpenCloud) onOpenCloud();
   });
 
   overlay.querySelector('#prof-btn-achievements')?.addEventListener('click', () => {
@@ -1157,3 +1217,445 @@ export function showFreeModeBriefingModal({ avatar, onStart, onCancel }) {
 
   return { close: () => overlay._cleanup() };
 }
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// 12. MODAL DE GESTIÓN Y SINCRONIZACIÓN EN LA NUBE (FIREBASE)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+export function showCloudModal({ save, onSaveUpdate, onLogout, onClose }) {
+  playPop();
+  const overlay = _createOverlay('modal-backdrop--cloud');
+  const user = save.user || {};
+  const isConnected = Boolean(user.student_id);
+
+  const _renderModalContent = (activeTab = 'login') => {
+    if (!isConnected) {
+      return `
+        <div class="modal-box modal-box--cloud" role="dialog" aria-modal="true">
+          <div class="modal-ribbon modal-ribbon--cloud">
+            <span>☁️ CUENTA EN LA NUBE</span>
+          </div>
+
+          <div class="modal-scroll-body">
+            <p style="font-size:clamp(11px,1.3vw,13px);color:#475569;font-weight:700;text-align:center;margin-bottom:.6rem;line-height:1.3">
+              Guarda tus estrellas, monedas y niveles en la nube para jugar desde cualquier computador sin perder nada.
+            </p>
+
+            <div class="cloud-tabs-nav">
+              <button class="cloud-tab-btn ${activeTab === 'login' ? 'cloud-tab-btn--active' : ''}" id="cm-tab-login">
+                🔑 Ya tengo cuenta
+              </button>
+              <button class="cloud-tab-btn ${activeTab === 'register' ? 'cloud-tab-btn--active' : ''}" id="cm-tab-reg">
+                🌟 Crear cuenta
+              </button>
+            </div>
+
+            <!-- Panel Iniciar Sesión -->
+            <div class="cloud-tab-panel" id="cm-panel-login" style="display:${activeTab === 'login' ? 'block' : 'none'}">
+              <div class="cloud-input-group">
+                <label for="cm-login-id" class="cloud-label">Tarjeta de Identidad / Cédula:</label>
+                <input id="cm-login-id" class="prof-alias-input" type="text" inputmode="numeric"
+                       placeholder="Ingresa tu documento (ej: 1098765432)" style="width:100%;text-align:center" />
+                <span class="cloud-hint">Tu tarjeta de identidad es tu llave para entrar siempre.</span>
+              </div>
+
+              <div id="cm-login-err" class="cloud-err-msg" style="display:none"></div>
+
+              <div class="modal-actions modal-actions--stacked" style="width:100%;margin-top:.6rem">
+                <button class="btn btn-green btn-md" id="cm-btn-do-login" style="width:100%">
+                  📥 ¡ENTRAR Y CARGAR MI AVANCE!
+                </button>
+              </div>
+            </div>
+
+            <!-- Panel Crear Cuenta -->
+            <div class="cloud-tab-panel" id="cm-panel-reg" style="display:${activeTab === 'register' ? 'block' : 'none'}">
+              <div class="cloud-input-group">
+                <label for="cm-reg-name" class="cloud-label">Primer Nombre y Primer Apellido:</label>
+                <input id="cm-reg-name" class="prof-alias-input" type="text" maxlength="30"
+                       placeholder="Ej: Juan Pérez" value="${user.alias !== 'Estudiante' ? user.alias : ''}" style="width:100%;text-align:center" />
+                <span class="cloud-hint">Este será tu apodo dentro del juego.</span>
+              </div>
+
+              <div class="cloud-input-group" style="margin-top:.4rem">
+                <label for="cm-reg-id" class="cloud-label">Tarjeta de Identidad / Cédula:</label>
+                <input id="cm-reg-id" class="prof-alias-input" type="text" inputmode="numeric"
+                       placeholder="Solo números (ej: 1098765432)" style="width:100%;text-align:center" />
+                <span class="cloud-hint">Única para ti, no importa si otro estudiante tiene tu mismo nombre.</span>
+              </div>
+
+              <div id="cm-reg-err" class="cloud-err-msg" style="display:none"></div>
+
+              <div class="modal-actions modal-actions--stacked" style="width:100%;margin-top:.6rem">
+                <button class="btn btn-orange btn-md" id="cm-btn-do-reg" style="width:100%">
+                  🚀 ¡CREAR CUENTA Y RESPALDAR!
+                </button>
+              </div>
+            </div>
+
+            <div class="modal-actions" style="margin-top:.8rem">
+              <button class="btn btn-gray btn-sm" id="cm-btn-close">
+                ✖ Volver al Juego
+              </button>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    // Modal cuando el usuario ya tiene sesión iniciada
+    return `
+      <div class="modal-box modal-box--cloud" role="dialog" aria-modal="true">
+        <div class="modal-ribbon modal-ribbon--cloud">
+          <span>☁️ MI PROGRESO EN LA NUBE</span>
+        </div>
+
+        <div class="modal-scroll-body">
+          <div class="cloud-user-header">
+            <div class="cloud-user-avatar avatar-emoji-bordered">${user.avatar || '🧒'}</div>
+            <div class="cloud-user-meta">
+              <h3 class="cloud-user-name">${user.alias || 'Estudiante'}</h3>
+              <div class="cloud-user-id-badge">
+                <span class="prof-cloud-dot"></span>
+                <span>Tarjeta ID: <strong>${user.student_id}</strong></span>
+              </div>
+              <span class="cloud-badge-connected">🟢 Conectado con Firebase</span>
+            </div>
+          </div>
+
+          <div class="cloud-stats-grid">
+            <div class="cloud-stat-card">
+              <span class="cloud-stat-icon">⭐</span>
+              <div class="cloud-stat-val">${user.stars_total || 0}</div>
+              <div class="cloud-stat-lbl">Estrellas</div>
+            </div>
+            <div class="cloud-stat-card">
+              <span class="cloud-stat-icon">🪙</span>
+              <div class="cloud-stat-val">${user.coins || 0}</div>
+              <div class="cloud-stat-lbl">Monedas</div>
+            </div>
+            <div class="cloud-stat-card">
+              <span class="cloud-stat-icon">💎</span>
+              <div class="cloud-stat-val">${user.gems || 0}</div>
+              <div class="cloud-stat-lbl">Gemas</div>
+            </div>
+          </div>
+
+          <div class="cloud-actions-box">
+            <button class="btn btn-green btn-md cloud-action-btn" id="cm-btn-upload">
+              <span style="font-size:18px">☁️⬆️</span>
+              <div style="text-align:left">
+                <strong>Subir Progreso a la Nube</strong>
+                <small style="display:block;opacity:.85;font-size:10px">Guarda tus monedas y estrellas actuales</small>
+              </div>
+            </button>
+
+            <button class="btn btn-blue btn-md cloud-action-btn" id="cm-btn-download">
+              <span style="font-size:18px">☁️⬇️</span>
+              <div style="text-align:left">
+                <strong>Descargar Progreso de la Nube</strong>
+                <small style="display:block;opacity:.85;font-size:10px">Restaura tu partida si formateaste el equipo</small>
+              </div>
+            </button>
+
+            <button class="btn btn-gold btn-sm cloud-action-btn" id="cm-btn-smart-merge" style="margin-top:.2rem">
+              <span style="font-size:16px">🔀</span>
+              <div style="text-align:left">
+                <strong>Fusión Inteligente (Conservar Todo)</strong>
+                <small style="display:block;opacity:.85;font-size:9.5px">Combina lo mejor de este equipo y de la nube</small>
+              </div>
+            </button>
+          </div>
+
+          <div id="cm-cloud-status-msg" class="cloud-status-msg" style="display:none"></div>
+
+          <div style="display:flex;gap:.5rem;width:100%;margin-top:.8rem">
+            <button class="btn btn-red btn-sm" id="cm-btn-logout" style="flex:0.8">
+              🚪 Salir de la Cuenta
+            </button>
+            <button class="btn btn-gray btn-sm" id="cm-btn-close" style="flex:1">
+              ✅ Cerrar
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+  };
+
+  const _bindEvents = () => {
+    // Pestañas (cuando no está conectado)
+    overlay.querySelector('#cm-tab-login')?.addEventListener('click', () => {
+      playClick();
+      overlay.innerHTML = _renderModalContent('login');
+      _bindEvents();
+    });
+
+    overlay.querySelector('#cm-tab-reg')?.addEventListener('click', () => {
+      playClick();
+      overlay.innerHTML = _renderModalContent('register');
+      _bindEvents();
+    });
+
+    // Iniciar Sesión
+    overlay.querySelector('#cm-btn-do-login')?.addEventListener('click', async () => {
+      playClick();
+      const idInp = overlay.querySelector('#cm-login-id');
+      const errEl = overlay.querySelector('#cm-login-err');
+      const btn = overlay.querySelector('#cm-btn-do-login');
+      const studentId = cleanStudentId(idInp?.value);
+
+      if (!studentId || studentId.length < 4) {
+        if (errEl) {
+          errEl.textContent = 'Ingresa tu documento de identidad (mínimo 4 números).';
+          errEl.style.display = 'block';
+        }
+        return;
+      }
+
+      if (btn) {
+        btn.disabled = true;
+        btn.textContent = '⏳ Conectando...';
+      }
+      if (errEl) errEl.style.display = 'none';
+
+      const res = await loginStudent(studentId);
+      if (!res.ok) {
+        if (btn) {
+          btn.disabled = false;
+          btn.textContent = '📥 ¡ENTRAR Y CARGAR MI AVANCE!';
+        }
+        if (errEl) {
+          errEl.textContent = res.error || 'Error al iniciar sesión.';
+          errEl.style.display = 'block';
+        }
+        return;
+      }
+
+      // Sesión iniciada con éxito -> descargar partida
+      const cloudRes = await fetchProgressFromCloud();
+      let updatedSave = save;
+
+      if (cloudRes.ok && cloudRes.data) {
+        updatedSave = smartMergeSave(save, cloudRes.data);
+      } else {
+        // Primera vez en la nube para esta cuenta -> respaldar guardado local
+        await saveProgressToCloud(save);
+      }
+
+      updatedSave.user.student_id = studentId;
+      updatedSave.user.alias = res.user.displayName || updatedSave.user.alias;
+      updatedSave.user.cloud_synced = true;
+
+      playVictory();
+      showToast(`¡Hola de nuevo, ${updatedSave.user.alias}! 🎒☁️`, 'ok', '👋');
+
+      overlay._cleanup();
+      if (onSaveUpdate) onSaveUpdate(updatedSave);
+    });
+
+    // Crear Cuenta
+    overlay.querySelector('#cm-btn-do-reg')?.addEventListener('click', async () => {
+      playClick();
+      const nameInp = overlay.querySelector('#cm-reg-name');
+      const idInp = overlay.querySelector('#cm-reg-id');
+      const errEl = overlay.querySelector('#cm-reg-err');
+      const btn = overlay.querySelector('#cm-btn-do-reg');
+
+      const fullName = (nameInp?.value || '').trim();
+      const studentId = cleanStudentId(idInp?.value);
+
+      if (!fullName || fullName.length < 2) {
+        if (errEl) {
+          errEl.textContent = 'Por favor escribe tu primer nombre y primer apellido.';
+          errEl.style.display = 'block';
+        }
+        return;
+      }
+
+      if (!studentId || studentId.length < 4) {
+        if (errEl) {
+          errEl.textContent = 'Ingresa tu documento de identidad (mínimo 4 números).';
+          errEl.style.display = 'block';
+        }
+        return;
+      }
+
+      if (btn) {
+        btn.disabled = true;
+        btn.textContent = '⏳ Creando cuenta...';
+      }
+      if (errEl) errEl.style.display = 'none';
+
+      const res = await registerStudent(studentId, fullName);
+      if (!res.ok) {
+        if (btn) {
+          btn.disabled = false;
+          btn.textContent = '🚀 ¡CREAR CUENTA Y RESPALDAR!';
+        }
+        if (errEl) {
+          errEl.textContent = res.error || 'No se pudo crear la cuenta.';
+          errEl.style.display = 'block';
+        }
+        return;
+      }
+
+      // Guardar de inmediato el progreso actual en la cuenta creada
+      save.user.student_id = studentId;
+      save.user.alias = fullName;
+      save.user.cloud_synced = true;
+      await saveProgressToCloud(save);
+
+      playVictory();
+      showToast('¡Cuenta creada y progreso respaldado en la nube! 🚀', 'ok', '🎉');
+
+      overlay._cleanup();
+      if (onSaveUpdate) onSaveUpdate(save);
+    });
+
+    // Subir progreso a la nube
+    overlay.querySelector('#cm-btn-upload')?.addEventListener('click', async () => {
+      playClick();
+      const btn = overlay.querySelector('#cm-btn-upload');
+      const msg = overlay.querySelector('#cm-cloud-status-msg');
+      if (btn) btn.disabled = true;
+      if (msg) {
+        msg.textContent = '⏳ Subiendo progreso a la nube...';
+        msg.style.display = 'block';
+        msg.style.color = '#0284C7';
+      }
+
+      const res = await saveProgressToCloud(save);
+      if (btn) btn.disabled = false;
+
+      if (res.ok) {
+        save.user.cloud_synced = true;
+        if (onSaveUpdate) onSaveUpdate(save);
+        playVictory();
+        if (msg) {
+          msg.textContent = '✅ ¡Tu progreso se guardó en la nube exitosamente!';
+          msg.style.color = '#16A34A';
+        }
+        showToast('¡Partida respaldada en la nube! ☁️✨', 'ok', '💾');
+      } else {
+        if (msg) {
+          msg.textContent = res.error || 'Error al guardar en la nube.';
+          msg.style.color = '#DC2626';
+        }
+      }
+    });
+
+    // Descargar progreso de la nube
+    overlay.querySelector('#cm-btn-download')?.addEventListener('click', async () => {
+      playClick();
+      const btn = overlay.querySelector('#cm-btn-download');
+      const msg = overlay.querySelector('#cm-cloud-status-msg');
+      if (btn) btn.disabled = true;
+      if (msg) {
+        msg.textContent = '⏳ Consultando la nube...';
+        msg.style.display = 'block';
+        msg.style.color = '#0284C7';
+      }
+
+      const res = await fetchProgressFromCloud();
+      if (btn) btn.disabled = false;
+
+      if (!res.ok) {
+        if (msg) {
+          msg.textContent = res.error || 'No se encontró partida en la nube.';
+          msg.style.color = '#DC2626';
+        }
+        return;
+      }
+
+      const cloudSave = res.data;
+      const localStars = save.user?.stars_total || 0;
+      const cloudStars = cloudSave.user?.stars_total || 0;
+
+      // Prevención de sobreescritura accidental: si el local tiene más estrellas que la nube
+      if (localStars > cloudStars) {
+        showConfirmModal({
+          title: '⚠️ ¿DESCARGAR DE LA NUBE?',
+          message: `Tu partida en este equipo tiene ${localStars} estrellas y la nube tiene ${cloudStars} estrellas. Si descargas directamente podrías perder estrellas recientes. ¿Deseas hacer una Fusión Inteligente para conservar lo mejor de ambas?`,
+          confirmText: '🔀 Fusión Inteligente (Recomendado)',
+          cancelText: 'Cancelar',
+          onConfirm: () => {
+            const merged = smartMergeSave(save, cloudSave);
+            saveProgressToCloud(merged);
+            overlay._cleanup();
+            if (onSaveUpdate) onSaveUpdate(merged);
+            showToast('¡Partidas combinadas sin perder nada! 🚀', 'ok', '✨');
+          },
+        });
+        return;
+      }
+
+      // Si no hay riesgo, restaurar
+      const merged = smartMergeSave(save, cloudSave);
+      overlay._cleanup();
+      if (onSaveUpdate) onSaveUpdate(merged);
+      playVictory();
+      showToast('¡Progreso descargado de la nube! 🚀', 'ok', '📥');
+    });
+
+    // Fusión inteligente manual
+    overlay.querySelector('#cm-btn-smart-merge')?.addEventListener('click', async () => {
+      playClick();
+      const btn = overlay.querySelector('#cm-btn-smart-merge');
+      const msg = overlay.querySelector('#cm-cloud-status-msg');
+      if (btn) btn.disabled = true;
+      if (msg) {
+        msg.textContent = '⏳ Fusionando partidas...';
+        msg.style.display = 'block';
+        msg.style.color = '#0284C7';
+      }
+
+      const res = await fetchProgressFromCloud();
+      if (btn) btn.disabled = false;
+
+      if (res.ok && res.data) {
+        const merged = smartMergeSave(save, res.data);
+        await saveProgressToCloud(merged);
+        overlay._cleanup();
+        if (onSaveUpdate) onSaveUpdate(merged);
+        playVictory();
+        showToast('¡Fusión completada! Máximo de estrellas y monedas guardado. ⭐', 'ok', '🔀');
+      } else {
+        if (msg) {
+          msg.textContent = 'No hay partida en la nube para fusionar. Subiremos tu partida actual.';
+          msg.style.color = '#16A34A';
+        }
+        await saveProgressToCloud(save);
+      }
+    });
+
+    // Cerrar sesión / Salir de cuenta
+    overlay.querySelector('#cm-btn-logout')?.addEventListener('click', () => {
+      playClick();
+      showConfirmModal({
+        title: '🚪 ¿SALIR DE TU CUENTA?',
+        message: 'Tu partida actual en la nube quedará a salvo. Podrás volver a entrar en cualquier momento con tu Tarjeta de Identidad.',
+        confirmText: 'Sí, Salir de la Cuenta',
+        cancelText: 'Continuar Jugando',
+        onConfirm: async () => {
+          await logoutStudent();
+          overlay._cleanup();
+          if (onLogout) onLogout();
+        },
+      });
+    });
+
+    // Cerrar modal
+    overlay.querySelector('#cm-btn-close')?.addEventListener('click', () => {
+      playPop();
+      overlay._cleanup();
+      if (onClose) onClose();
+    });
+  };
+
+  overlay.innerHTML = _renderModalContent('login');
+  document.body.appendChild(overlay);
+  _bindEvents();
+
+  return { close: () => overlay._cleanup() };
+}
+

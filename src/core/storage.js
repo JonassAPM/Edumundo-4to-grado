@@ -61,7 +61,10 @@ export function getDefaultSave() {
       roulette_last_spin: { coins: 0, avatars: 0, titles: 0 },
       sfx_enabled: true,
       music_enabled: true,
+      student_id: null,
+      cloud_synced: false,
     },
+    last_updated: new Date().toISOString(),
 
     /**
      * Estado de cada módulo temático.
@@ -181,6 +184,9 @@ export function loadSave() {
  */
 export function saveSave(data) {
   try {
+    if (data) {
+      data.last_updated = new Date().toISOString();
+    }
     localStorage.setItem(SAVE_KEY, JSON.stringify(data));
     return true;
   } catch (err) {
@@ -343,6 +349,9 @@ function _migrate(data) {
   data.user.roulette_last_spin = data.user.roulette_last_spin || { coins: 0, avatars: 0, titles: 0 };
   data.user.sfx_enabled = typeof data.user.sfx_enabled === 'boolean' ? data.user.sfx_enabled : true;
   data.user.music_enabled = typeof data.user.music_enabled === 'boolean' ? data.user.music_enabled : true;
+  data.user.student_id = data.user.student_id || null;
+  data.user.cloud_synced = typeof data.user.cloud_synced === 'boolean' ? data.user.cloud_synced : false;
+  data.last_updated = data.last_updated || new Date().toISOString();
   data.diagnostics = { ...fresh.diagnostics, ...(data.diagnostics ?? {}) };
 
   for (const key of Object.keys(fresh.modules)) {
