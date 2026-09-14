@@ -26,7 +26,7 @@ import {
 
 // ─── Credenciales del Proyecto Firebase ────────────────────────────────────────
 const firebaseConfig = {
-  apiKey: "AIzaSyC_1gJS9S_tSsBs_h-amtMJgqvsWJdXItI",
+  apiKey: "AIzaSyC_1gJS9S_tSsBs_h-amtMJgqvsWJDxIiI",
   authDomain: "eduaventura-g4.firebaseapp.com",
   projectId: "eduaventura-g4",
   storageBucket: "eduaventura-g4.firebasestorage.app",
@@ -90,12 +90,14 @@ export function formatAuthError(code) {
       return 'Ya existe una cuenta con este documento de identidad. Usa la opción "Iniciar Sesión".';
     case 'auth/weak-password':
       return 'El documento de identidad debe tener al menos 4 números.';
+    case 'auth/operation-not-allowed':
+      return 'El método de autenticación por Correo/Contraseña no está habilitado en Firebase Console.';
     case 'auth/network-request-failed':
       return 'Sin conexión a internet. Revisa tu red Wifi o cable.';
     case 'auth/too-many-requests':
       return 'Demasiados intentos seguidos. Espera un momento antes de reintentar.';
     default:
-      return 'Ocurrió un inconveniente al conectar con el servidor. Por favor intenta de nuevo.';
+      return code ? `Error del servidor (${code}). Por favor intenta de nuevo.` : 'Ocurrió un inconveniente al conectar con el servidor.';
   }
 }
 
