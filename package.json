@@ -1,7 +1,7 @@
 {
   "name": "eduaventura-g4",
   "version": "1.0.0",
-  "description": "EduAventura – Matemáticas 4.° Grado Primaria – I.E. Técnico Industrial Laureano Gómez Castro",
+  "description": "EduAventura – Matemáticas 4.° Grado Primaria",
   "private": true,
   "scripts": {
     "dev": "vite",

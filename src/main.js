@@ -134,7 +134,7 @@ const AVATAR_QUOTES = [
   '¡Respira antes de responder! La calma te da máxima puntería mental. 🧘',
   '¡Una racha de x5 o x10 en Modo Libre multiplica tus monedas! 🪙🔥',
   '¡Si completas los 20 niveles de una isla, ganas la corona dorada! 👑',
-  '¡En el Colegio Laureano Gómez nos formamos con excelencia! 🏫',
+  '¡En 4.° grado nos formamos con dedicación y excelencia! 🏫',
   '¡Un gran matemático nunca se rinde ante un desafío difícil! 🛡️',
   '💡 Resta rápida: Piensa cuánto le falta al menor para llegar al mayor. 🎯',
   '💡 Conmutativa: El orden de los factores no altera el producto: 7 × 8 = 56. 🔄',
@@ -577,7 +577,7 @@ function _tplWelcome() {
         </div>
 
         <div style="font-size:clamp(8.5px,1.1vw,11px);color:#94A3B8;margin-top:.55rem;font-weight:600">
-          I.E. Técnico Industrial Laureano Gómez Castro · Sincronización en la Nube
+          Matemáticas 4.° Grado Primaria · Sincronización en la Nube
         </div>
       </div>
     </div>

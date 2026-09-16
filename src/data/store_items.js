@@ -70,7 +70,7 @@ export const STORE_ITEMS = [
   { id: 'av_cybero',  type: 'avatar', rarity: 'epic', value: '👾', name: 'Pixel Glitch',description: 'Hackea la matriz de ejercicios.', price: 680 },
 
   // ─── Míticos (5) ───────────────────────────────────────────────────────────
-  { id: 'av_dragon',  type: 'avatar', rarity: 'mythic', value: '🐉', name: 'Dragón Dorado', description: 'La leyenda suprema de Aguachica.', price: 1500 },
+  { id: 'av_dragon',  type: 'avatar', rarity: 'mythic', value: '🐉', name: 'Dragón Dorado', description: 'La leyenda suprema de las matemáticas.', price: 1500 },
   { id: 'av_king',    type: 'avatar', rarity: 'mythic', value: '👑', name: 'Rey Supremo',   description: 'Gobernante absoluto del 4.° grado.', price: 1750 },
   { id: 'av_phoenix', type: 'avatar', rarity: 'mythic', value: '⚡', name: 'Fénix Rayo',    description: 'Renace con cada racha perfecta.', price: 2000 },
   { id: 'av_rocket',  type: 'avatar', rarity: 'mythic', value: '🚀', name: 'Astronauta',    description: 'Capitán de la estación cósmica.', price: 2300 },
@@ -113,7 +113,7 @@ export const STORE_ITEMS = [
 
   // ─── Míticos (3) ───────────────────────────────────────────────────────────
   { id: 'tit_mind',     type: 'title', rarity: 'mythic',   value: '🧠 Mente Invencible',     name: 'Mente Invencible',        description: 'Pensamiento lógico imparable e invicto.', price: 1500 },
-  { id: 'tit_legend',   type: 'title', rarity: 'mythic',   value: '🌟 Leyenda de Laureano',  name: 'Leyenda de Laureano',     description: 'Orgullo supremo de Aguachica, Cesar.', price: 1850 },
+  { id: 'tit_legend',   type: 'title', rarity: 'mythic',   value: '🌟 Leyenda de 4.° Grado',  name: 'Leyenda de 4.° Grado',     description: 'Orgullo supremo de los aventureros matemáticos.', price: 1850 },
   { id: 'tit_supreme',  type: 'title', rarity: 'mythic',   value: '👑 Supremo G4',           name: 'Supremo G4',              description: 'La máxima distinción de honor de EduAventura.', price: 2200 },
 ];
 

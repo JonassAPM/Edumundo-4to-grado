@@ -339,7 +339,13 @@ function _migrate(data) {
     data.user.unlocked_avatars.push(data.user.avatar);
   }
   data.user.unlocked_titles = Array.isArray(data.user.unlocked_titles) ? data.user.unlocked_titles : ['Novato Matemático'];
+  data.user.unlocked_titles = data.user.unlocked_titles.map((t) =>
+    typeof t === 'string' && t.includes('Laureano') ? '🌟 Leyenda de 4.° Grado' : t
+  );
   data.user.title = data.user.title || 'Novato Matemático';
+  if (typeof data.user.title === 'string' && data.user.title.includes('Laureano')) {
+    data.user.title = '🌟 Leyenda de 4.° Grado';
+  }
   data.user.highscores = data.user.highscores || { free_mode: 0, m1: 0, m2: 0, m3: 0, m4: 0 };
   data.user.best_streaks = data.user.best_streaks || { m1_multiplicacion: 0, m2_division: 0, m3_fracciones_intro: 0, m4_fracciones_ops: 0 };
   data.user.total_spins = typeof data.user.total_spins === 'number' ? data.user.total_spins : 0;

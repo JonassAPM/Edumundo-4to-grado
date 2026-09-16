@@ -1288,12 +1288,12 @@ export function showSettingsModal({ sfxOn, musicOn, onToggleSfx, onToggleMusic, 
           </div>
 
           <div class="settings-section">
-            <h4 class="settings-section-title">Información Institucional</h4>
+            <h4 class="settings-section-title">Información Pedagógica</h4>
             <div class="settings-docente-box">
-              <p><strong>I.E. Técnico Industrial Laureano Gómez Castro</strong></p>
-              <p>Sede Primaria · Aguachica, Cesar · Grado 4.°</p>
+              <p><strong>EduAventura · Matemáticas 4.° Grado</strong></p>
+              <p>Educación Básica Primaria · Grado 4.°</p>
               <p style="margin-top:.2rem;color:#78909C;font-size:clamp(9px,1.1vw,11px)">
-                100% Offline · Desarrollado para fortalecer el cálculo mental y el razonamiento fraccionario.
+                100% Offline · Desarrollado para fortalecer el cálculo mental y el razonamiento fraccionario en cualquier institución educativa.
               </p>
             </div>
           </div>

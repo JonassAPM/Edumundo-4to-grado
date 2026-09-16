@@ -8,7 +8,7 @@
  *   Parámetros 33–36 — Fases: Adquisición (1-4), Práctica (5-9),
  *                       Resolución (10-14), Maestro (15).
  *   Parámetro 39  — Generación determinista con rangos controlados.
- *   Parámetro 40  — Contextualización agrícola y cotidiana (Aguachica, Cesar).
+ *   Parámetro 40  — Contextualización cotidiana y escolar de 4.° Grado.
  *   Parámetro 197 — Propiedad 'dba' con referencia al DBA de Matemáticas G4.
  *
  * NOTA: Los 15 niveles se poblarán completamente en la fase de contenidos.
