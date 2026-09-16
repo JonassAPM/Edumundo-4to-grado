@@ -226,13 +226,82 @@ document.addEventListener('mozfullscreenchange', _updateFullscreenButtons);
 document.addEventListener('MSFullscreenChange', _updateFullscreenButtons);
 window.addEventListener('resize', _updateFullscreenButtons);
 
-// ─── Service Worker ───────────────────────────────────────────────────────────
-if ('serviceWorker' in navigator) {
+// ─── Detección Automática de Actualizaciones y Purga de Caché ───────────────
+async function _checkAutoUpdateAndClearCache() {
+  if (!window.location.protocol.startsWith('http')) return;
+
+  try {
+    const res = await fetch('./version.json?t=' + Date.now(), { cache: 'no-store' });
+    if (!res.ok) return;
+    const data = await res.json();
+    const serverBuild = String(data.buildTime || '');
+    if (!serverBuild) return;
+
+    const localBuild = localStorage.getItem('eduaventura_last_build');
+    if (localBuild && localBuild !== serverBuild) {
+      console.log(`[AutoUpdate] Nueva versión detectada (${localBuild} -> ${serverBuild}). Limpiando caché...`);
+      localStorage.setItem('eduaventura_last_build', serverBuild);
+
+      // Limpiar cachés de la Cache Storage API (HTTP cache)
+      if ('caches' in window) {
+        const keys = await caches.keys();
+        await Promise.all(keys.map((k) => caches.delete(k)));
+      }
+
+      // Forzar actualización del Service Worker
+      if ('serviceWorker' in navigator) {
+        const regs = await navigator.serviceWorker.getRegistrations();
+        for (const reg of regs) {
+          await reg.update();
+        }
+      }
+
+      // Recargar limpiamente para montar la nueva versión fresca
+      window.location.reload();
+      return;
+    }
+
+    if (!localBuild) {
+      localStorage.setItem('eduaventura_last_build', serverBuild);
+    }
+  } catch (_) {
+    // Modo offline o sin servidor de versión: continuar normalmente
+  }
+}
+
+_checkAutoUpdateAndClearCache();
+
+// ─── Service Worker con verificación automática en cada inicio ───────────────
+if ('serviceWorker' in navigator && window.location.protocol.startsWith('http')) {
   window.addEventListener('load', () => {
     navigator.serviceWorker
-      .register('./sw.js', { scope: './' })
-      .then((r) => console.log('[SW Activo]', r.scope))
+      .register('./sw.js', { scope: './', updateViaCache: 'none' })
+      .then((reg) => {
+        console.log('[SW Activo]', reg.scope);
+        // Verificar activamente si el archivo sw.js cambió en el servidor
+        reg.update();
+
+        reg.addEventListener('updatefound', () => {
+          const newWorker = reg.installing;
+          if (newWorker) {
+            newWorker.addEventListener('statechange', () => {
+              if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                console.log('[SW] Nueva versión instalada. Actualizando página...');
+                window.location.reload();
+              }
+            });
+          }
+        });
+      })
       .catch((e) => console.warn('[SW Offline]', e.message));
+
+    let refreshing = false;
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (!refreshing) {
+        refreshing = true;
+        window.location.reload();
+      }
+    });
   });
 }
 
