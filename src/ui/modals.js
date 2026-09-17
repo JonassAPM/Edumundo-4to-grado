@@ -20,6 +20,7 @@ import {
   smartMergeSave,
   cleanStudentId,
   formatAuthError,
+  enforceNumericInput,
 } from '../core/firebase.js';
 
 // ─── Utilidad Base para Modales y Barra de Desplazamiento Persistente ─────────
@@ -1654,7 +1655,7 @@ export function showCloudModal({ save, getSave, onSaveUpdate, onLogout, onClose 
 
               <div class="cloud-input-group" style="margin-top:.45rem">
                 <label for="cm-reg-id" class="cloud-label">Tarjeta de Identidad / Cédula:</label>
-                <input id="cm-reg-id" class="prof-alias-input" type="text" inputmode="numeric"
+                <input id="cm-reg-id" class="prof-alias-input" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="15"
                        placeholder="Solo números (ej: 1098765432)" style="width:100%;text-align:center" />
               </div>
 
@@ -1671,7 +1672,7 @@ export function showCloudModal({ save, getSave, onSaveUpdate, onLogout, onClose 
             <div class="cloud-tab-panel" id="cm-panel-login" style="display:${activeTab === 'login' ? 'block' : 'none'}">
               <div class="cloud-input-group">
                 <label for="cm-login-id" class="cloud-label">Tarjeta de Identidad / Cédula:</label>
-                <input id="cm-login-id" class="prof-alias-input" type="text" inputmode="numeric"
+                <input id="cm-login-id" class="prof-alias-input" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="15"
                        placeholder="Ingresa tu documento (ej: 1098765432)" style="width:100%;text-align:center" />
               </div>
 
@@ -1771,6 +1772,10 @@ export function showCloudModal({ save, getSave, onSaveUpdate, onLogout, onClose 
   };
 
   const _bindEvents = () => {
+    // Restringir campos de ID exclusivamente a números en tiempo real
+    enforceNumericInput(overlay.querySelector('#cm-reg-id'));
+    enforceNumericInput(overlay.querySelector('#cm-login-id'));
+
     // Pestañas (cuando no está conectado)
     overlay.querySelector('#cm-tab-login')?.addEventListener('click', () => {
       playClick();
@@ -1790,11 +1795,12 @@ export function showCloudModal({ save, getSave, onSaveUpdate, onLogout, onClose 
       const idInp = overlay.querySelector('#cm-login-id');
       const errEl = overlay.querySelector('#cm-login-err');
       const btn = overlay.querySelector('#cm-btn-do-login');
-      const studentId = cleanStudentId(idInp?.value);
+      const rawVal = (idInp?.value || '').trim();
+      const studentId = cleanStudentId(rawVal);
 
-      if (!studentId || studentId.length < 4) {
+      if (!studentId || studentId.length < 4 || /\D/.test(rawVal)) {
         if (errEl) {
-          errEl.textContent = 'Ingresa tu documento de identidad (mínimo 4 números).';
+          errEl.textContent = 'Ingresa tu documento de identidad (únicamente números, mín. 4 dígitos).';
           errEl.style.display = 'block';
         }
         return;
@@ -1850,7 +1856,8 @@ export function showCloudModal({ save, getSave, onSaveUpdate, onLogout, onClose 
       const btn = overlay.querySelector('#cm-btn-do-reg');
 
       const fullName = (nameInp?.value || '').trim();
-      const studentId = cleanStudentId(idInp?.value);
+      const rawVal = (idInp?.value || '').trim();
+      const studentId = cleanStudentId(rawVal);
 
       if (!fullName || fullName.length < 2) {
         if (errEl) {
@@ -1860,9 +1867,9 @@ export function showCloudModal({ save, getSave, onSaveUpdate, onLogout, onClose 
         return;
       }
 
-      if (!studentId || studentId.length < 4) {
+      if (!studentId || studentId.length < 4 || /\D/.test(rawVal)) {
         if (errEl) {
-          errEl.textContent = 'Ingresa tu documento de identidad (mínimo 4 números).';
+          errEl.textContent = 'El documento de identidad debe contener únicamente números (mínimo 4 dígitos).';
           errEl.style.display = 'block';
         }
         return;

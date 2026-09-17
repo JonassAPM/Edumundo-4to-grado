@@ -13,7 +13,7 @@
 'use strict';
 
 // El nombre de caché se actualiza automáticamente con el timestamp en postbuild
-const CACHE_NAME = 'eduaventura-build-1789536611532';
+const CACHE_NAME = 'eduaventura-build-1789657932342';
 
 const IS_DEV = self.location.hostname === 'localhost' ||
                self.location.hostname === '127.0.0.1';

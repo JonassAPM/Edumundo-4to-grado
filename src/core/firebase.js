@@ -42,13 +42,65 @@ export const db = getFirestore(app);
 // ─── Utilidades de formato ───────────────────────────────────────────────────
 
 /**
- * Normaliza el documento de identidad eliminando puntos, guiones y espacios.
+ * Normaliza el documento de identidad conservando únicamente dígitos numéricos (0-9).
+ * Elimina letras, espacios, puntos, guiones y cualquier otro símbolo.
  * @param {string|number} rawId
  * @returns {string}
  */
 export function cleanStudentId(rawId) {
   if (!rawId) return '';
-  return String(rawId).replace(/[^a-zA-Z0-9]/g, '').trim().toLowerCase();
+  return String(rawId).replace(/\D/g, '').trim();
+}
+
+/**
+ * Restringe un elemento de entrada <input> para que acepte estrictamente dígitos numéricos (0-9).
+ * Bloquea en tiempo real la inserción de letras tanto al escribir en el teclado como al pegar o arrastrar texto.
+ * @param {HTMLInputElement|null} inputEl
+ */
+export function enforceNumericInput(inputEl) {
+  if (!inputEl) return;
+
+  // Filtrado reactivo en evento 'input' (cubre tecleo rápido, IME móvil, autocompletado y drag & drop)
+  inputEl.addEventListener('input', () => {
+    const cleaned = inputEl.value.replace(/\D/g, '');
+    if (inputEl.value !== cleaned) {
+      inputEl.value = cleaned;
+    }
+  });
+
+  // Bloqueo directo en 'keydown' para evitar que las letras aparezcan en pantalla
+  inputEl.addEventListener('keydown', (e) => {
+    // Teclas de control del sistema permitidas
+    if (['Backspace', 'Tab', 'Enter', 'Escape', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Delete', 'Home', 'End'].includes(e.key)) {
+      return;
+    }
+    // Combinaciones especiales con Ctrl o Cmd (Copiar, Pegar, Cortar, Seleccionar Todo)
+    if (e.ctrlKey || e.metaKey) {
+      return;
+    }
+    // Si no es un dígito 0-9, impedir la pulsación
+    if (!/^\d$/.test(e.key)) {
+      e.preventDefault();
+    }
+  });
+
+  // Manejo de portapapeles ('paste') para limpiar cualquier texto pegado
+  inputEl.addEventListener('paste', (e) => {
+    e.preventDefault();
+    const pasteData = (e.clipboardData || window.clipboardData)?.getData('text') || '';
+    const cleanDigits = pasteData.replace(/\D/g, '');
+    if (!cleanDigits) return;
+
+    const start = inputEl.selectionStart ?? inputEl.value.length;
+    const end = inputEl.selectionEnd ?? inputEl.value.length;
+    const currentVal = inputEl.value;
+    const maxLen = inputEl.maxLength > 0 ? inputEl.maxLength : 20;
+
+    const nextVal = (currentVal.slice(0, start) + cleanDigits + currentVal.slice(end)).slice(0, maxLen);
+    inputEl.value = nextVal;
+    inputEl.selectionStart = inputEl.selectionEnd = Math.min(start + cleanDigits.length, maxLen);
+    inputEl.dispatchEvent(new Event('input', { bubbles: true }));
+  });
 }
 
 /**
@@ -110,11 +162,12 @@ export function formatAuthError(code) {
  * @returns {Promise<{ ok: boolean, user?: any, error?: string }>}
  */
 export async function registerStudent(studentId, fullName) {
+  const rawIdStr = String(studentId || '').trim();
   const cleanId = cleanStudentId(studentId);
   const nickname = (fullName || '').trim();
 
-  if (!cleanId || cleanId.length < 4) {
-    return { ok: false, error: 'Por favor ingresa un documento de identidad válido (mínimo 4 dígitos).' };
+  if (!cleanId || cleanId.length < 4 || /\D/.test(rawIdStr)) {
+    return { ok: false, error: 'El documento de identidad debe contener únicamente números (mínimo 4 dígitos).' };
   }
   if (!nickname || nickname.length < 2) {
     return { ok: false, error: 'Por favor escribe tu primer nombre y primer apellido.' };
@@ -152,10 +205,11 @@ export async function registerStudent(studentId, fullName) {
  * @returns {Promise<{ ok: boolean, user?: any, error?: string }>}
  */
 export async function loginStudent(studentId) {
+  const rawIdStr = String(studentId || '').trim();
   const cleanId = cleanStudentId(studentId);
 
-  if (!cleanId || cleanId.length < 4) {
-    return { ok: false, error: 'Por favor ingresa tu documento de identidad (mínimo 4 dígitos).' };
+  if (!cleanId || cleanId.length < 4 || /\D/.test(rawIdStr)) {
+    return { ok: false, error: 'El documento de identidad debe contener únicamente números (mínimo 4 dígitos).' };
   }
 
   const email = _idToEmail(cleanId);

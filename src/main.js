@@ -50,6 +50,7 @@ import {
   saveProgressToCloud,
   fetchProgressFromCloud,
   smartMergeSave,
+  enforceNumericInput,
 } from './core/firebase.js';
 import { getClaimableTasksCount } from './data/tasks_data.js';
 import { getDidacticGuide, shouldAutoShowGuide } from './data/didactic_guides.js';
@@ -540,7 +541,7 @@ function _tplWelcome() {
 
           <div class="cloud-input-group" style="margin-top:.45rem">
             <label for="wc-reg-id" class="cloud-label">Tarjeta de Identidad / Cédula:</label>
-            <input id="wc-reg-id" class="prof-alias-input" type="text" inputmode="numeric"
+            <input id="wc-reg-id" class="prof-alias-input" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="15"
                    placeholder="Solo números (ej: 1098765432)" style="width:100%;text-align:center" />
           </div>
 
@@ -557,7 +558,7 @@ function _tplWelcome() {
         <div class="cloud-tab-panel" id="wc-panel-login" style="width:100%;display:none">
           <div class="cloud-input-group">
             <label for="wc-login-id" class="cloud-label">Tarjeta de Identidad / Cédula:</label>
-            <input id="wc-login-id" class="prof-alias-input" type="text" inputmode="numeric"
+            <input id="wc-login-id" class="prof-alias-input" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="15"
                    placeholder="Ingresa tu documento (ej: 1098765432)" style="width:100%;text-align:center" />
           </div>
 
@@ -2771,6 +2772,10 @@ function _bind(state, scr, ctx) {
     case 'WELCOME': {
       attachPersistentScrollbar($('#screen .modal-box--welcome'));
 
+      // Restringir campos de ID exclusivamente a números en tiempo real
+      enforceNumericInput($('#wc-reg-id'));
+      enforceNumericInput($('#wc-login-id'));
+
       const tabLogin = $('#wc-tab-login');
       const tabReg = $('#wc-tab-reg');
       const panelLogin = $('#wc-panel-login');
@@ -2800,11 +2805,12 @@ function _bind(state, scr, ctx) {
         const idInp = $('#wc-login-id');
         const errEl = $('#wc-login-err');
         const btn = $('#wc-btn-login');
-        const studentId = cleanStudentId(idInp?.value);
+        const rawVal = (idInp?.value || '').trim();
+        const studentId = cleanStudentId(rawVal);
 
-        if (!studentId || studentId.length < 4) {
+        if (!studentId || studentId.length < 4 || /\D/.test(rawVal)) {
           if (errEl) {
-            errEl.textContent = 'Ingresa tu documento de identidad (mínimo 4 números).';
+            errEl.textContent = 'Ingresa tu documento de identidad (únicamente números, mín. 4 dígitos).';
             errEl.style.display = 'block';
           }
           return;
@@ -2860,7 +2866,8 @@ function _bind(state, scr, ctx) {
         const btn = $('#wc-btn-reg');
 
         const fullName = (nameInp?.value || '').trim();
-        const studentId = cleanStudentId(idInp?.value);
+        const rawVal = (idInp?.value || '').trim();
+        const studentId = cleanStudentId(rawVal);
 
         if (!fullName || fullName.length < 2) {
           if (errEl) {
@@ -2870,9 +2877,9 @@ function _bind(state, scr, ctx) {
           return;
         }
 
-        if (!studentId || studentId.length < 4) {
+        if (!studentId || studentId.length < 4 || /\D/.test(rawVal)) {
           if (errEl) {
-            errEl.textContent = 'Ingresa tu documento de identidad (mínimo 4 números).';
+            errEl.textContent = 'El documento de identidad debe contener únicamente números (mínimo 4 dígitos).';
             errEl.style.display = 'block';
           }
           return;
