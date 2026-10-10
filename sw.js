@@ -1,35 +1,42 @@
-/**
- * @file sw.js — Service Worker de EduAventura G4
- *
- * Estrategia de Caching Inteligente:
- *   - Network-First para HTML y JavaScript (app.js): Garantiza que cualquier
- *     actualización se reciba de inmediato sin requerir Ctrl+Shift+R, con
- *     fallback a caché para funcionamiento Offline completo.
- *   - Stale-While-Revalidate para assets estáticos (imágenes, iconos, fuentes).
- *   - skipWaiting y clients.claim inmediatos en cada ciclo.
- *   - Purga automática de cachés obsoletos en activate.
- */
-
+// Para que el juego funcione sin internet y guarde los archivos en el navegador
 'use strict';
 
-// El nombre de caché se actualiza automáticamente con el timestamp en postbuild
-const CACHE_NAME = 'eduaventura-build-__BUILD_TIME__';
+// Nombre del paquete de archivos guardados
+// IMPORTANTE: cuando cambies el código, sube este número y el de version.json
+const CACHE_NAME = 'eduaventura-v15';
 
 const IS_DEV = self.location.hostname === 'localhost' ||
                self.location.hostname === '127.0.0.1';
 
+const FIREBASE_CDN = 'https://www.gstatic.com/firebasejs/12.19.0/';
+
 const PRE_CACHE_ASSETS = IS_DEV
-  ? ['/']
+  ? ['./']
   : [
       './',
       './index.html',
       './manifest.json',
       './favicon.svg',
       './favicon.png',
-      './assets/app.js',
+      './css/style.css',
+      './js/app.js',
+      './js/controllers/app_controller.js',
+      './js/models/firebase.js',
+      './js/models/state.js',
+      './js/models/storage.js',
+      './js/models/data/didactic_guides.js',
+      './js/models/data/store_items.js',
+      './js/models/data/tasks_data.js',
+      './js/views/audio.js',
+      './js/views/keypad.js',
+      './js/views/modals.js',
+      './js/views/roulette.js',
+      FIREBASE_CDN + 'firebase-app.js',
+      FIREBASE_CDN + 'firebase-auth.js',
+      FIREBASE_CDN + 'firebase-firestore.js',
     ];
 
-// ─── Evento install ───────────────────────────────────────────────────────────
+// Guardar archivos principales al instalar
 self.addEventListener('install', (event) => {
   self.skipWaiting();
   event.waitUntil(
@@ -40,7 +47,7 @@ self.addEventListener('install', (event) => {
   );
 });
 
-// ─── Evento activate ──────────────────────────────────────────────────────────
+// Borrar archivos viejos cuando hay una nueva versión
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches
@@ -50,7 +57,7 @@ self.addEventListener('activate', (event) => {
           cacheNames
             .filter((name) => name !== CACHE_NAME)
             .map((name) => {
-              console.log('[SW] Purgando caché antiguo obsoleto:', name);
+              console.log('[SW] Borrando versión vieja:', name);
               return caches.delete(name);
             })
         );
@@ -59,14 +66,14 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-// ─── Evento fetch ─────────────────────────────────────────────────────────────
+// Cuando la app pide algún archivo o imagen
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
 
   const url = new URL(event.request.url);
   if (!['http:', 'https:'].includes(url.protocol)) return;
 
-  // 1. version.json siempre directo a la red (sin caché para detectar updates al instante)
+  // 1. Revisar siempre si hay actualización disponible
   if (url.pathname.endsWith('version.json')) {
     event.respondWith(
       fetch(event.request).catch(() => new Response('{}', { headers: { 'Content-Type': 'application/json' } }))
@@ -74,10 +81,11 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // 2. Para HTML (navegación) y scripts (app.js): Network-First con fallback a Caché offline
+  // 2. Primero busca en internet; si no hay señal saca la copia guardada
   const isHtmlOrCode = event.request.mode === 'navigate' ||
                        url.pathname.endsWith('.html') ||
                        url.pathname.endsWith('.js') ||
+                       url.pathname.endsWith('.css') ||
                        url.pathname === '/' ||
                        url.pathname.endsWith('/');
 
@@ -92,7 +100,7 @@ self.addEventListener('fetch', (event) => {
           return networkResponse;
         })
         .catch(() => {
-          // Si no hay conexión (offline), servir desde el caché
+          // Si no hay señal, mostrar lo que está guardado
           return caches.match(event.request).then((cached) => {
             if (cached) return cached;
             if (event.request.mode === 'navigate') {
@@ -109,7 +117,7 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // 3. Para assets estáticos: Cache-First con actualización silenciosa en segundo plano
+  // 3. Para imágenes y sonidos: cargar rápido desde la copia local
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
       const networkFetch = fetch(event.request)

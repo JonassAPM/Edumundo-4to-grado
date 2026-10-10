@@ -3,16 +3,13 @@
   <head>
     <meta charset="UTF-8" />
 
-    <!--
-      Parámetro 156: Bloqueo de pinch-to-zoom; viewport landscape forzado.
-      Parámetro 9 : Compatibilidad Android WebView 80+.
-    -->
+    <!-- Para que la pantalla se ajuste bien en teléfonos acostados -->
     <meta
       name="viewport"
       content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
     />
 
-    <!-- SEO / PWA meta -->
+    <!-- Datos de la app para el navegador -->
     <meta name="description" content="EduAventura: aplicación educativa offline de matemáticas para 4.° de Básica Primaria." />
     <meta name="theme-color" content="#00BCD4" />
     <meta name="mobile-web-app-capable" content="yes" />
@@ -20,32 +17,29 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="EduAventura" />
 
-    <!-- Control de Caché: Evita que el navegador almacene en disco el HTML principal desactualizado -->
+    <!-- Para que no guarde caché y siempre cargue lo último -->
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
     <meta http-equiv="Pragma" content="no-cache" />
     <meta http-equiv="Expires" content="0" />
 
-    <!-- Parámetro 8: Manifest PWA -->
+    <!-- Archivo manifest para instalar como app -->
     <link rel="manifest" href="./manifest.json" />
 
-    <!-- Favicon e Icono de la Barra de Ventana / Pestaña del Navegador -->
+    <!-- Iconos de la pestaña -->
     <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
     <link rel="icon" type="image/png" sizes="32x32" href="./favicon-32.png" />
     <link rel="icon" type="image/png" sizes="64x64" href="./favicon.png" />
     <link rel="apple-touch-icon" sizes="192x192" href="./assets/images/icon-192.png" />
 
-    <!-- Título SEO principal -->
+    <!-- Título de la pestaña -->
     <title>EduAventura – Matemáticas 4.° Grado Primaria</title>
 
-    <!-- Estilos globales (Zero-CDN: fuentes locales WOFF2 vía @font-face) -->
-    <link rel="stylesheet" href="/src/style.css" />
+    <!-- Estilos generales -->
+    <link rel="stylesheet" href="./css/style.css" />
   </head>
   <body>
 
-    <!--
-      Bloqueo de Orientación Vertical para Móviles con Animación de Giro Cartoon
-      Se muestra automáticamente en pantallas verticales/móviles.
-    -->
+    <!-- Aviso para girar el celular si está en vertical -->
     <div id="rotate-screen" aria-live="polite" role="alert">
       <div class="rotate-screen__card">
         <div class="rotate-ribbon">⭐ EDUAVENTURA 4.° ⭐</div>
@@ -54,12 +48,12 @@
           <div class="cartoon-phone">
             <div class="cartoon-phone-earpiece"></div>
             <div class="cartoon-phone-screen">
-              <!-- Capa Portrait: cuando el teléfono está vertical -->
+              <!-- Vista cuando el teléfono está de pie -->
               <div class="screen-portrait-layer">
                 <span class="sp-icon">🧒</span>
                 <span class="sp-hint">¡GÍRAME!</span>
               </div>
-              <!-- Capa Landscape: rota -90° y se adapta horizontalmente cuando el teléfono gira 90° -->
+              <!-- Vista cuando el teléfono está acostado -->
               <div class="screen-landscape-layer">
                 <span class="sl-item">🏝️</span>
                 <div class="sl-math">2 × 4 = 8</div>
@@ -85,16 +79,9 @@
       </div>
     </div>
 
-    <!--
-      Parámetro 102: Contenedor raíz centrado #app-container.
-      Parámetro 101: aspect-ratio 16/9 con letterboxing.
-      Parámetro 130: overflow hidden, cero scroll.
-    -->
+    <!-- Contenedor donde se dibuja todo el juego -->
     <div id="app-container" role="main">
-      <!--
-        Pantalla 0 – Splash Screen (Parámetro 161)
-        Visible durante 1.5 s mientras el SW y localStorage se inicializan.
-      -->
+      <!-- Pantalla de carga mientras inicia el juego -->
       <div id="screen-splash" class="screen screen--active" aria-label="Cargando EduAventura">
         <div class="splash__logo" aria-hidden="true">
           <span class="splash__title">EduAventura</span>
@@ -104,13 +91,10 @@
         <div class="splash__spinner" aria-label="Cargando…"></div>
       </div>
 
-      <!-- Las demás pantallas se montan dinámicamente por main.js -->
+      <!-- El resto de pantallas las dibuja el controlador (js/controllers/app_controller.js) -->
     </div>
 
-    <!--
-      Parámetro 4: Registro del Service Worker desde el entry-point HTML.
-      La lógica real de registro vive en main.js para mantener la SPA limpia.
-    -->
-    <script type="module" src="/src/main.js"></script>
+    <!-- Archivo principal de JavaScript (arranca el patrón MVC) -->
+    <script type="module" src="./js/app.js"></script>
   </body>
 </html>
